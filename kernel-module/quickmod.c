@@ -18,7 +18,7 @@ static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
 
-const static unsigned unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
+const static unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
 static AES_KEY pk;
 static block current_key, current_state;
 
@@ -44,7 +44,7 @@ static block current_key, current_state;
   } while(0)
 
 
-void AES_128_Key_Expansion(const unsigned unsigned char *userkey, void *key)
+void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 {
     __m128i x0,x1,x2;
     __m128i *kp = (__m128i *)key;
@@ -443,9 +443,9 @@ static int __init cryptomod_init(void)
 	unsigned char str[8200]; 
     memset(str,'a',(8192));
 
-/*****************************Add by  Cong****************************/ 
 
-    //int aes_err;
+
+    int j;
 	__u64 tag;	
 	crypto_int();
 	pr_info("------crypto_int Starts!! ----------\n");
