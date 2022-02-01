@@ -174,18 +174,18 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 
 /*Marcos used to unrolling ECB*/
 
-#define aes_single(cipher_blks, sched)                               \
+#define aes_single(cipher_blk, sched)                               \
 	do{                                                              \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[1]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[2]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[3]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[4]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[5]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[6]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[7]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[8]); \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[9]); \
-		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);\
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[1]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[2]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[3]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[4]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[5]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[6]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[7]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[8]); \
+		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[9]); \
+		cipher_blk =_mm_aesenclast_si128(cipher_blk, sched[10]);\
 	} while(0)
 
 
@@ -403,7 +403,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
 			tmp.bl =_mm_xor_si128(tmp.bl, mask);
 			//AES_single(&tmp.bl, sched);
-			aes_single(&tmp.bl, sched);
+			aes_single(tmp.bl, sched);
 			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
 			remaining -= 14;
 			counter +=1;
@@ -417,7 +417,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			memcpy(&tmp.u8[2], log_msg, remaining);
 			//AES_single(&tmp.bl, sched);
 			tmp.bl = xor_block(tmp.bl, mask);
-			aes_single(&tmp.bl, sched);
+			aes_single(tmp.bl, sched);
 			/*AES Preround */	
 		}
 		*out = tag_blks[2];
