@@ -333,16 +333,16 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	uint16_t j, remaining, counter;
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
-	block * sched;
+	block * sched, *out;
 	block mask, cipher_blks[9], tag_blks[3];
 	block next[2];
-
+	__u64 proof[2];
 	int nblks;
 	nblks = (msg_len/112); 
 	remaining=(uint16_t)(msg_len%112);
 	counter =0;
 	sched = ((block *)(pk.rd_key)); //point to AES round keys	
-
+	out = ((block *)(proof));
 	//xor the signing key with the aes public key
 	mask =_mm_xor_si128(sched[0], current_key);
 	tag_blks[2] = current_key;
@@ -402,7 +402,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
 			tmp.bl =_mm_xor_si128(tmp.bl, mask);
 			//AES_single(&tmp.bl, sched);
-			aes_single(cipher_blks, sched);
+			aes_single(&tmp.bl, sched);
 			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
 			remaining -= 14;
 			counter +=1;
@@ -415,10 +415,11 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tmp.u16[0]= counter;
 			memcpy(&tmp.u8[2], log_msg, remaining);
 			//AES_single(&tmp.bl, sched);
-			aes_single(cipher_blks, sched);
-			/*AES Preround */
 			tmp.bl = xor_block(tmp.bl, mask);
+			aes_single(&tmp.bl, sched);
+			/*AES Preround */	
 		}
+		*out = tag_blks[2];
     }
 	next[0] = current_state;//0 xor ase_key xor current_state
 	next[1] = xor_block(sched[0], next[1]); //1 xor ase_key xor current_state
@@ -427,7 +428,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	current_key = xor_block(next[0], current_state);
 	current_state = xor_block(next[1], current_state);
 	//kernel_fpu_end();
-	return tag_blks[2];
+	return proof[0];
 }
 
 #undef gen_7_blks
