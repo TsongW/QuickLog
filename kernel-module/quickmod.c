@@ -7,14 +7,14 @@
 #include <linux/module.h>
 #include <linux/random.h>
 #include <linux/slab.h>
-//#include <asm/i387.h>//linux version <5
-#include <asm/fpu/api.h> //version =5
+#include <asm/i387.h>
 #define  _MM_MALLOC_H_INCLUDED
 #include <x86intrin.h>
 #undef _MM_MALLOC_H_INCLUDED
 
 
 #define len  256 //generating size
+#define iteration 500000
 static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
@@ -447,12 +447,13 @@ static int __init cryptomod_init(void)
 
 
 
-    int j;
+    int j, times;
+	times = iteration+8000;
 	__u64 tag;	
 	crypto_int();
 	pr_info("------crypto_int Starts!! ----------\n");
 
-	for(j=0;j<508000;j++)
+	for(j=0;j<times;j++)
 	{	
 		kernel_fpu_begin();
 		tag = mac_core(str,len);
