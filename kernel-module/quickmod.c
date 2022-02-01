@@ -7,7 +7,8 @@
 #include <linux/module.h>
 #include <linux/random.h>
 #include <linux/slab.h>
-#include <asm/i387.h>//linux version <5
+//#include <asm/i387.h>//linux version <5
+#include <asm/fpu/api.h> //version =5
 #define  _MM_MALLOC_H_INCLUDED
 #include <x86intrin.h>
 #undef _MM_MALLOC_H_INCLUDED
