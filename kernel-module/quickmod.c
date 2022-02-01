@@ -13,7 +13,7 @@
 #undef _MM_MALLOC_H_INCLUDED
 
 
-#define len  256 //generating size
+#define len  1024 //generating size
 #define iteration 500000
 static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
