@@ -328,7 +328,7 @@ static void crypto_int(void)
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
 **/
-static block mac_core(unsigned char *log_msg, size_t msg_len)
+static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 {
 	uint16_t j, remaining, counter;
 	//tmp: used for padding the last block
