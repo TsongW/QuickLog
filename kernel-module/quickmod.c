@@ -448,14 +448,11 @@ static int __init cryptomod_init(void)
 	pr_info("Module started.\n");
 	unsigned char str[8200]; 
     memset(str,'a',(8192));
-
-
-
     int j, times;
 	times = iteration+8000;
 	__u64 tag;	
 	crypto_int();
-	pr_info("------crypto_int Starts!! ----------\n");
+	pr_info("------crypto_int is done ----------\n");
 
 	for(j=0;j<times;j++)
 	{	
@@ -463,10 +460,10 @@ static int __init cryptomod_init(void)
 		tag = mac_core(str,len);
 		kernel_fpu_end();
 		
-		if (j==8000) pr_info(" Mac Starts!! \n");
+		if (j==8000) pr_info("----Mac Starts---- \n");
 		
 	}
-	pr_info(" Mac End!!!!!!!!!!!!!!!!!!!\n");
+	pr_info("-----Mac End-----\n");
 	return 0;
 }
 
