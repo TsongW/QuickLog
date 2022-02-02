@@ -30,7 +30,11 @@ static block current_key, current_state;
 /*Load 14-byte log data after the 2-byte counter*/
 #define gen_logging_blk(log,ctr) _mm_insert_epi16(_mm_loadu_si128(log), ctr, 0)
 
-
+/********************************************************************/
+// AES Key Expansion
+// Sources: OCB Version 3 Reference Code (Optimized C)  
+// https://www.cs.ucdavis.edu/~rogaway/ocb/news/code/ocb.c
+//
 #define EXPAND_ASSIST(v1,v2,v3,v4,shuff_const,aes_const)                    \
   do{                                                                       \
     v2 = _mm_aeskeygenassist_si128(v4,aes_const);                           \
