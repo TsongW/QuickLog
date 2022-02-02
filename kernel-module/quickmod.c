@@ -318,7 +318,7 @@ static void crypto_int(void)
 	AES_128_Key_Expansion(aeskey,&pk); //inital aes round keys
 	/*generating the first key-stae pair*/
 	sched = ((block *)(pk.rd_key));
-	mask = xor_block(sched[0], *(block *)s_0);/*xor the intial state with the aes public key*/
+	mask = xor_block(sched[0], *(block *)s_0);/*xor the intial state with the aes fixed key*/
 	AES_ECB_2(init_pair, sched, mask);
 	current_state = xor_block(init_pair[0], *(block *)s_0);
 	current_key = xor_block(init_pair[1], *(block *)s_0);
@@ -332,7 +332,7 @@ static void crypto_int(void)
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: a 64-byte tag
 **/
-static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
+static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 {
 	uint16_t j, remaining, counter;
 	//tmp: used for padding the last block
@@ -347,7 +347,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	counter =0;
 	sched = ((block *)(pk.rd_key)); //point to AES round keys	
 	out = ((block *)(proof));
-	//xor the signing key with the aes public key
+	//xor the signing key with the aes fixed key
 	mask =_mm_xor_si128(sched[0], current_key);
 	tag_blks[2] = current_key;
 
