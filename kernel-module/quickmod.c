@@ -14,7 +14,7 @@
 
 
 #define len  1024 //generating size
-#define iteration 500000
+#define iteration 100000
 static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
