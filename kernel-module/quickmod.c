@@ -325,8 +325,6 @@ static void crypto_int(void)
 	kernel_fpu_end();
 }
 
-
-
 /**  
 * MAC, signing a log message and updating the signing-key & state
 * Input @log_msg: a log data, 
