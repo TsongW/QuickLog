@@ -68,10 +68,9 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 }
 #undef EXPAND_ASSIST
 
-//----------------------------------------------------
+//-----------some helper functions------------------------------
 
-//AES pre-round 8 blocks
-
+//Generate 7-block MAC1 inputs
 #define gen_7_blks(cipher_blks,log_msg,counter)                            \
     do{                                                                    \
 		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); \
@@ -138,7 +137,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 
 
 //XOR 8 cipher blocks
-
 #define tag_8_xor(tag_blks,cipher_blks)                                                                       \
   do{                                                                                                              \
 	tag_blks[0] =xor_block(xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  \
@@ -178,8 +176,9 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 
 /*Marcos used to unrolling ECB*/
 
-#define aes_single(cipher_blk, sched)                               \
-	do{                                                              \
+//aes_single's pre-round outside the macros
+#define aes_single(cipher_blk, sched)                        \
+	do{                                                      \
 		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[1]); \
 		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[2]); \
 		cipher_blk = _mm_aesenc_si128(cipher_blk, sched[3]); \
@@ -304,11 +303,13 @@ static void cmpt_2_blks(block *cipher_blks, uint16_t counter, const unsigned cha
 		AES_ECB_2(cipher_blks,sched, sign_keys);	
 }
 
-
-/*Initial*/
+/** Initial:
+*** Expand AES round keys
+*** Genreate first signing key and state pair 
+**/
 static void crypto_int(void)
 {
-	unsigned char s_0[16];
+	unsigned char s_0[16];/* initial State */
 	block mask, init_pair[2];
 	block * sched;
 	get_random_bytes(s_0, 16);
@@ -317,7 +318,7 @@ static void crypto_int(void)
 	AES_128_Key_Expansion(aeskey,&pk); //inital aes round keys
 	/*generating the first key-stae pair*/
 	sched = ((block *)(pk.rd_key));
-	mask = xor_block(sched[0], *(block *)s_0);
+	mask = xor_block(sched[0], *(block *)s_0);/*xor the intial state with the aes public key*/
 	AES_ECB_2(init_pair, sched, mask);
 	current_state = xor_block(init_pair[0], *(block *)s_0);
 	current_key = xor_block(init_pair[1], *(block *)s_0);
@@ -331,7 +332,7 @@ static void crypto_int(void)
 * Input @log_msg: a log data, 
 * Computing block format: a block(16 bytes) contains "<i>||M_i",  
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
-* Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
+* Output: a 64-byte tag
 **/
 static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 {
@@ -367,7 +368,6 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
 			gen_7_blks(cipher_blks,log_msg,counter);
 			AES_ECB_8(cipher_blks,sched, mask);
-			/*(III)Xor each block*/
 			tag_8_xor(tag_blks,cipher_blks);
 			counter +=8;
 			log_msg +=110;
