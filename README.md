@@ -1,7 +1,7 @@
-This repository contains the source code of the prototypes of QuickLog that we used for the defense evaluation of the paper:
+This repository contains the source code of the prototypes of the secure logging scheme QuickLog the paper:
 "Faster Yet Safer: Logging System Via Fixed-Key Blockcipher".
 
-We plan to make the code open-source after the paper is accepted. 
+
 
 # Overview
 QuickLog follows the blueprint in the work of Bellare and Yee but uses a one-time MAC instead of a standard MAC. 
