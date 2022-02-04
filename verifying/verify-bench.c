@@ -430,6 +430,8 @@ int main(){
 	memset(str6,'g',(len));
 	memset(str7,'h',(len));
 
+	
+
 	crypto_int();
 	sleep(0.5);
 
@@ -461,14 +463,14 @@ int main(){
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
 	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
-	printf("vtag[0]= %ld ns\n", vtag[0] );
-	printf("vtag[1]= %ld ns\n", vtag[1] );
-	printf("vtag[2]= %ld ns\n", vtag[2] );
-	printf("vtag[3]= %ld ns\n", vtag[3] );
-	printf("vtag[4]= %ld ns\n", vtag[4] );
-	printf("vtag[5]= %ld ns\n", vtag[5] );
-	printf("vtag[6]= %ld ns\n", vtag[6] );
-	printf("vtag[7]= %ld ns\n", vtag[7] );
+	printf("tag[0]= %ld;\n", vtag[0] );
+	printf("tag[1]= %ld;\n", vtag[1] );
+	printf("tag[2]= %ld;\n", vtag[2] );
+	printf("tag[3]= %ld;\n", vtag[3] );
+	printf("tag[4]= %ld;\n", vtag[4] );
+	printf("tag[5]= %ld;\n", vtag[5] );
+	printf("tag[6]= %ld;\n", vtag[6] );
+	printf("tag[7]= %ld;\n", vtag[7] );
 
 	
 
