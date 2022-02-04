@@ -408,7 +408,7 @@ static int verify_signature(u64 integrity_proof)
 #endif 
 
 
-int ITERATIONS=100000;
+int ITERATIONS=1;
 
 int len =256;
 
