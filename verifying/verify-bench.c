@@ -510,7 +510,7 @@ int main(int argc, char* argv[]){
 	
 	my_time = ( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
-	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time/8), len, ITERATIONS);
+	printf("My verification time = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time/(ITERATIONS*8)), len, ITERATIONS);
 
 	return 0;
 
