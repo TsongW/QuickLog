@@ -415,7 +415,6 @@ int main(){
 	char str3[8192];
 	char str4[8192];
 	char str5[8192];
-
 	uint64_t vtag[8];
 	int i, p, ret;
 	struct timespec start, end;
@@ -437,10 +436,8 @@ int main(){
 	}
 	*/
 
-	vtag[0] = verify_core(str, &len, &current_key);
-
-	printf("My verification time = %ld ns\n", vtag[0]);
-
+	verify_core(str, &len, &current_key);
+	
 	clock_gettime(id,&end);
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
