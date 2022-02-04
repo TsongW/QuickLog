@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <string.h>   
 #include <stdlib.h>
+#include <unistd.h>
 #include <x86intrin.h>
 #include <immintrin.h>
 #include <emmintrin.h>   
@@ -430,9 +431,9 @@ int main(){
 	memset(str7,'h',(len));
 
 	crypto_int();
+	sleep(2);
 
 	clock_gettime(id, &start);
-	
 	for(i=0;i<ITERATIONS;i++){		
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0, update_pair, sched_key);
@@ -454,11 +455,8 @@ int main(){
 		vtag[6]=verify_core((unsigned char*)str6, &len, &current_key[13]);
 		vtag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
 	}
-	
-
-	//vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
-	
 	clock_gettime(id,&end);
+	
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
