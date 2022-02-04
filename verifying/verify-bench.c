@@ -397,32 +397,6 @@ static void crypto_int(void){
 #undef AES_ECB_8
 #undef tag_blks_xor_8
 
-#if 0
-//****************median function*************************
-int compare(const void* a, const void* b)
-{
-    long long arg1 = *(long long *)a;
-    long long  arg2 = *(long long *)b;
- 
-    if (arg1 < arg2) return -1;
-    if (arg1 > arg2) return 1;
-    return 0;
-}
- 
-long long median(int n,  long long * x) {
-    long long temp;
-    qsort(x, n, sizeof(long long), compare);
-
-    if(n%2==0) {
-        // if there is an even number of elements, return mean of the two elements in the middle
-        return ((x[n/2] + x[n/2 - 1]) / 2.0);
-    } else {
-        // else return the element in the middle
-        return  x[n/2];
-    }
-}
-//*****************************************************************
-#endif
 
 
 
@@ -477,8 +451,7 @@ int main(int argc, char* argv[]){
 
 	clock_gettime(id, &start);
 	for(i=0;i<ITERATIONS;i++){
-
-				
+	
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0,  sched_key);
 		my_update(&current_key[2], &current_key[0],  sched_key);
@@ -502,8 +475,7 @@ int main(int argc, char* argv[]){
 		/*Verifying*/
 		for(j=0;j<8;j++){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
-		}
-		
+		}	
 		
 	}
 	clock_gettime(id,&end);
