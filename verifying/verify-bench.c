@@ -433,12 +433,12 @@ int main(){
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0, update_pair, sched_key);
 		my_update(&current_key[2], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[4], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[6], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[8], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[10], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[12], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[14], &current_key[0], update_pair, sched_key);
+		my_update(&current_key[4], &current_key[2], update_pair, sched_key);
+		my_update(&current_key[6], &current_key[4], update_pair, sched_key);
+		my_update(&current_key[8], &current_key[6], update_pair, sched_key);
+		my_update(&current_key[10], &current_key[8], update_pair, sched_key);
+		my_update(&current_key[12], &current_key[10], update_pair, sched_key);
+		my_update(&current_key[14], &current_key[12], update_pair, sched_key);
 
 		/*Verifying 8 messages*/
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
