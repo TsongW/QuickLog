@@ -18,22 +18,17 @@ We ran our evaluation using the following setup:
 # Instructions
 
 ## Test Signing 
-To run QuickLog with kernel module:
+To test QuickLog signing in kernel module:
 
-- Enter the `kernel-module` directory and run `make`.
-- (optional) Clear the message buffer of the kernel using `sudo dmesg --clear`.
-- Load `quickmod` using `sudo insmod quickmod.ko`.
-- You can see what the kernel module did using `dmesg`.
+- Enter the `signing` directory and run `make` to compile. 
+- Load `quickmod` using `sudo insmod quickmod.ko` command.(You may use `sudo dmesg --clear` before load, making the output clear).
+- Run`dmesg` command to check results. 
 - When you are done, unload the kernel module using `sudo rmmod quickmod`.
 
+
 ## Test Verifying
-To apply the kernel patches, build and run the patched kernel, we recommend the following steps:
+To test QuickLog signing in kernel module:
 
-- Download Linux kernel 3.10.0-1160.49.1.el7 from here:
-  http://vault.centos.org/7.9.2009/updates/Source/SPackages/kernel-3.10.0-1160.49.1.el7.src.rpm
-
-- Patch the extracted kernel using our provided kernel patch `quick.patch`.
-
-- Compile and install the patched kernel
-
-- Reboot your machine into the custom kernel
+- Enter the `verifying` directory and run `make` to compile. 
+- Using `./verify` to run
+- When you are done, using `make clean` to remove.
