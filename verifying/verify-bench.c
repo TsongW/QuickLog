@@ -398,7 +398,31 @@ static void crypto_int(void){
 #undef AES_ECB_8
 #undef tag_blks_xor_8
 
+//****************median function*************************
+int compare(const void* a, const void* b)
+{
+    long long arg1 = *(long long *)a;
+    long long  arg2 = *(long long *)b;
+ 
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+ 
+long long median(int n, long long * x) {
+    long long temp;
+    int i, j;
+    qsort(x, n, sizeof(long long), compare);
 
+    if(n%2==0) {
+        // if there is an even number of elements, return mean of the two elements in the middle
+        return ((x[n/2] + x[n/2 - 1]) / 2.0);
+    } else {
+        // else return the element in the middle
+        return  x[n/2];
+    }
+}
+//*****************************************************************
 
 
 
@@ -409,11 +433,11 @@ int main(int argc, char* argv[]){
 	uint64_t tag[8], vtag[8];
 	block  current_key[16];
 	struct timespec start, end;
-	long long  my_time;
 	clockid_t id = CLOCK_MONOTONIC;
+	long long med, my_time[6400000];
 	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
-
+	
 	if (argc >=2) len = atoi(argv[1]);
     else len = 256;
     if (argc >= 3) 
@@ -421,7 +445,7 @@ int main(int argc, char* argv[]){
     else ITERATIONS = 100000;
 
 
-	//initial log messages------------------------------------
+	//initial log messages------------
 	char str[4112];
 	char str1[4112];
 	char str2[4112];
@@ -447,13 +471,14 @@ int main(int argc, char* argv[]){
 	tag[6]= -6771316224959848646;
 	tag[7]= 3942336840475268872;
 
-	//initial log messages done-------------------------------------
+	//initial log messages done-------
 
 	crypto_int();
 	sleep(0.5);
 
-	clock_gettime(id, &start);
-	for(i=0;i<ITERATIONS;i++){		
+	
+	for(i=0;i<ITERATIONS;i++){
+		clock_gettime(id, &start);		
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0,  sched_key);
 		my_update(&current_key[2], &current_key[0],  sched_key);
@@ -478,13 +503,15 @@ int main(int argc, char* argv[]){
 		for(j=0;j<8;j++){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
+		clock_gettime(id,&end);
+		my_time[j] =( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	}
-	clock_gettime(id,&end);
+	
 	
 
-	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
+	med = median(ITERATIONS,  my_time);  
 	
-	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
+	printf("My verification median = %lld ns\n", ((long long) med/8) );
 
 	return 0;
 
