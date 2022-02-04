@@ -411,7 +411,7 @@ int compare(const void* a, const void* b)
  
 long long median(int n,  long long * x) {
     long long temp;
-    qsort(x, n, sizeof(long long), compare);
+    //qsort(x, n, sizeof(long long), compare);
 
     if(n%2==0) {
         // if there is an even number of elements, return mean of the two elements in the middle
