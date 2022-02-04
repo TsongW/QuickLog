@@ -419,23 +419,23 @@ int main(){
 	for(i=0;i<ITERATIONS;i++){		
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[2], &s_0, update_pair, sched_key);
+		my_update(&current_key[4], &s_0, update_pair, sched_key);
+		my_update(&current_key[6], &s_0, update_pair, sched_key);
+		my_update(&current_key[8], &s_0, update_pair, sched_key);
+		my_update(&current_key[10], &s_0, update_pair, sched_key);
+		my_update(&current_key[12], &s_0, update_pair, sched_key);
+		my_update(&current_key[14], &s_0, update_pair, sched_key);
 
 		/*Verifying 8 messages*/
-		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[1]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[2]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[3]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[4]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[5]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[6]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[7]=verify_core((unsigned char*)str, &len, &current_key[0]);
+		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
+		vtag[1]=verify_core((unsigned char*)str, &len, &current_key[3]);
+		vtag[2]=verify_core((unsigned char*)str, &len, &current_key[5]);
+		vtag[3]=verify_core((unsigned char*)str, &len, &current_key[7]);
+		vtag[4]=verify_core((unsigned char*)str, &len, &current_key[9]);
+		vtag[5]=verify_core((unsigned char*)str, &len, &current_key[11]);
+		vtag[6]=verify_core((unsigned char*)str, &len, &current_key[13]);
+		vtag[7]=verify_core((unsigned char*)str, &len, &current_key[15]);
 	}
 	
 
