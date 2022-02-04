@@ -282,16 +282,16 @@ static void crypto_int(void)
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
 **/
-uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *current_key)
+unsigned long long verify_core( unsigned char *log_msg, const size_t *len,  const block *current_key)
 {
 	uint16_t remaining, counter;
 	size_t msg_len = *len;
 	//tmp: used for padding the last block
-	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
+	union { uint16_t u16[8]; unsigned char u8[16]; block bl; } tmp;
 	block * sched;
 	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
-	union { uint64_t u64[2]; block bl; } out;
+	union { unsigned long long u64[2]; block bl; } out;
 
 	int nblks;
 	nblks = (msg_len/112); 
@@ -416,7 +416,7 @@ int main(){
 	char str4[8192];
 	char str5[8192];
 
-	uint64_t vtag[8];
+	unsigned long long vtag[8];
 	int i, p, ret;
 	struct timespec start, end;
 	long long  my_time;
