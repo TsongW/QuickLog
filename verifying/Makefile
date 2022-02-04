@@ -1,11 +1,5 @@
-obj-m += quickmod.o
+CC=gcc
+CFLAGS= -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native
 
-KERNELDIR ?= /lib/modules/$(shell uname -r)/build
-PWD := $(shell pwd)
-ccflags-y := -std=gnu99 -Wno-declaration-after-statement -mmmx -mavx -maes -mpreferred-stack-boundary=4
-
-
-all:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD)
-clean:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+verify-bench: verify-bench.o 
+     $(CC) -o verify verify-bench.o 
