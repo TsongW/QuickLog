@@ -9,6 +9,7 @@ We ran our evaluation using the following setup:
 - CentOS 7 (Linux version 3.10.0-1160.49.1.el7) with Linux Audit version 2.8.5-4.el7
 - You can download from here:
   http://vault.centos.org/7.9.2009/updates/Source/SPackages/kernel-3.10.0-1160.49.1.el7.src.rpm
+  
 # Test Signing Instructions
 To test QuickLog signing in kernel module:
 
