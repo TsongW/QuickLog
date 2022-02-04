@@ -258,9 +258,13 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 **/
 
 /*Updating a key-sate pair using the current_state */
-void my_update(block * current_key, block * current_state, block * update_pair, block *sched_key)
+void my_update(block * current_key, const block * current_state, const block *sched_key)
 {
+	block update_pair[2];
 	block mask = xor_block(sched_key[0], *current_state);
+	update_pair[0] = zero_block();/*0 for updatting state*/
+	update_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
+	
 	AES_ECB_2(update_pair,sched_key, mask);
 	current_key[0] = xor_block(update_pair[0], *current_state);
 	current_key[1] = xor_block(update_pair[1], *current_state);
@@ -404,14 +408,12 @@ int main(){
 	
 	int i,j;
 	uint64_t tag[8], vtag[8];
-	block  current_key[16], update_pair[2];
+	block  current_key[16];
 	struct timespec start, end;
 	long long  my_time;
 	clockid_t id = CLOCK_MONOTONIC;
 	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
-	update_pair[0] = zero_block();/*0 for updatting state*/
-	update_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	//initial log messages------------------------------------
 	char str[4112];
 	char str1[4112];
@@ -445,14 +447,14 @@ int main(){
 	clock_gettime(id, &start);
 	for(i=0;i<ITERATIONS;i++){		
 		/*Generating 8 signing keys*/
-		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		my_update(&current_key[2], &current_key[0], update_pair, sched_key);
-		my_update(&current_key[4], &current_key[2], update_pair, sched_key);
-		my_update(&current_key[6], &current_key[4], update_pair, sched_key);
-		my_update(&current_key[8], &current_key[6], update_pair, sched_key);
-		my_update(&current_key[10], &current_key[8], update_pair, sched_key);
-		my_update(&current_key[12], &current_key[10], update_pair, sched_key);
-		my_update(&current_key[14], &current_key[12], update_pair, sched_key);
+		my_update(&current_key[0], &s_0,  sched_key);
+		my_update(&current_key[2], &current_key[0],  sched_key);
+		my_update(&current_key[4], &current_key[2],  sched_key);
+		my_update(&current_key[6], &current_key[4],  sched_key);
+		my_update(&current_key[8], &current_key[6],  sched_key);
+		my_update(&current_key[10], &current_key[8], sched_key);
+		my_update(&current_key[12], &current_key[10],sched_key);
+		my_update(&current_key[14], &current_key[12],sched_key);
 
 		/*Computing 8 messages*/
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
