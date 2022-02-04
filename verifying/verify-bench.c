@@ -1,7 +1,7 @@
 /**
 ** To run: 
 ** gcc -o verify  verify-macros.c -mmmx  -maes -mpreferred-stack-boundary=4 
-gcc   -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-macros.c
+gcc  -Wall  -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
 **/
 
 
@@ -11,9 +11,9 @@ gcc   -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native
 #include <string.h>   
 #include <stdlib.h>
 #include <x86intrin.h>
-#include <linux/types.h>
-
-
+#include <immintrin.h>
+#include <emmintrin.h>   
+#include <wmmintrin.h>
 /* Define standard sized integers  */
 #if defined(_MSC_VER) && (_MSC_VER < 1600)
 	typedef unsigned __int8  uint8_t;
@@ -26,7 +26,7 @@ gcc   -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native
 
 
 
-#define len 256
+#define len 1024
 
 
 /* Some helper functions */
