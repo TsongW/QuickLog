@@ -477,6 +477,7 @@ int main(int argc, char* argv[]){
 
 	
 	for(i=0;i<ITERATIONS;i++){
+		
 		clock_gettime(id, &start);		
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0,  sched_key);
@@ -503,7 +504,7 @@ int main(int argc, char* argv[]){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
 		clock_gettime(id,&end);
-		my_time[i] =( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
+		my_time[i] = ( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	}
 	
 	
