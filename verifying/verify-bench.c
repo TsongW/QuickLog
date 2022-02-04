@@ -427,6 +427,8 @@ int main(){
 	memset(str1,'b',(len));
 	memset(str2,'c',(len));
 	memset(str3,'d',(len));
+	uint64_t tag[8];
+	tag[0]= -5216491920774220218;
 
 
 
@@ -438,9 +440,14 @@ int main(){
 	*/
 
 	vtag[0] = verify_core(str, &len, &current_key);
-	printf("vtag[0] = %ld ns\n",vtag[0]);
+
 	
 	clock_gettime(id,&end);
+	printf("vtag[0] = %ld ns\n",vtag[0]);
+	if (vtag[i]-tag[i]!=0){
+				printf("Failed verification for\n");
+				break;
+			}
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 
