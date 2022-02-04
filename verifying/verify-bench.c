@@ -440,10 +440,7 @@ int main(){
 	*/
 
 	vtag[0] = verify_core(str, &len, &current_key);
-		if (vtag[0]-tag[0]!=0){
-				printf("Failed verification for\n");
-			}
-	
+
 	clock_gettime(id,&end);
 	printf("vtag[0] = %ld ns\n",vtag[0]);
 
