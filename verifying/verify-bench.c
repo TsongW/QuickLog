@@ -26,9 +26,6 @@ gcc  -Wall  -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=
 
 
 
-#define len 1024
-
-
 /* Some helper functions */
 #define rnds 10 //AES rounds
 typedef __m128i block;
@@ -413,7 +410,7 @@ static int verify_signature(u64 integrity_proof)
 
 int ITERATIONS=100000;
 
-
+int len =256;
 
 int main(){
 
