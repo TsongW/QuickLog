@@ -34,8 +34,8 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
 //block current_key[16], next_key[16];
-long long ITERATIONS;
-size_t len;
+int  ITERATIONS, len;
+
 
 /********************************************************************/
 // AES Key Expansion
@@ -283,7 +283,7 @@ void my_update(block * current_key, const block * current_state, const block *sc
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: a proof, out(uint64_t)
 **/
-uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *current_key)
+uint64_t verify_core( unsigned char *log_msg, const int *len,  const block *current_key)
 {
 	uint16_t remaining, counter;
 	size_t msg_len = *len;
@@ -511,7 +511,7 @@ int main(int argc, char* argv[]){
 
 	med = median(ITERATIONS,  my_time);  
 	
-	printf("My verification median = %lld ns\n", ((long long) med/8) );
+	printf("My verification median = %lld ns,  ITERATIONS=%d \n", ((long long) med/8) );
 
 	return 0;
 
