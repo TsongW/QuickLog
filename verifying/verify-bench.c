@@ -509,9 +509,9 @@ int main(int argc, char* argv[]){
 	
 	
 
-	med = median(ITERATIONS,  my_time);  
+	//med = median(ITERATIONS,  my_time);  
 	
-	printf("My verification median = %lld ns\n", ((long long) med/8) );
+	//printf("My verification median = %lld ns\n", ((long long) med/8) );
 
 	return 0;
 
