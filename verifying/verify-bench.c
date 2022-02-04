@@ -504,14 +504,14 @@ int main(int argc, char* argv[]){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
 		clock_gettime(id,&end);
-		my_time[j] =( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
+		my_time[i] =( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	}
 	
 	
 
-	//med = median(ITERATIONS,  my_time);  
+	med = median(ITERATIONS,  my_time);  
 	
-	//printf("My verification median = %lld ns\n", ((long long) med/8) );
+	printf("My verification median = %lld ns\n", ((long long) med/8) );
 
 	return 0;
 
