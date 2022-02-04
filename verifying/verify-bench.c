@@ -476,14 +476,14 @@ int main(){
 	
 	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
 	
-	/*printf("tag[0]= %ld;\n", vtag[0] );
+	printf("tag[0]= %ld;\n", vtag[0] );
 	printf("tag[1]= %ld;\n", vtag[1] );
 	printf("tag[2]= %ld;\n", vtag[2] );
 	printf("tag[3]= %ld;\n", vtag[3] );
 	printf("tag[4]= %ld;\n", vtag[4] );
 	printf("tag[5]= %ld;\n", vtag[5] );
 	printf("tag[6]= %ld;\n", vtag[6] );
-	printf("tag[7]= %ld;\n", vtag[7] );*/
+	printf("tag[7]= %ld;\n", vtag[7] );
 
 	
 
