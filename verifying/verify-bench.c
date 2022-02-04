@@ -439,10 +439,11 @@ int main(){
 	}
 	*/
 
-	vtag[0] = verify_core(str, &len, &current_key);
+	verify_core(str, &len, &current_key);
 
 	clock_gettime(id,&end);
-	printf("vtag[0] = %ld ns\n",vtag[0]);
+
+	//printf("vtag[0] = %ld ns\n",vtag[0]);
 
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
