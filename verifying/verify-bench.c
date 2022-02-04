@@ -416,6 +416,7 @@ int main(){
 	char str4[8192];
 	char str5[8192];
 
+	uint64_t vtag[8];
 	int i, p, ret;
 	struct timespec start, end;
 	long long  my_time;
@@ -423,16 +424,23 @@ int main(){
 
 	crypto_int();
 	memset(str,'a',(len));
-	memset(str1,'a',(len));
-	memset(str2,'a',(len));
-	memset(str3,'a',(len));
+	memset(str1,'b',(len));
+	memset(str2,'c',(len));
+	memset(str3,'d',(len));
 
 
 
 	clock_gettime(id, &start);
+	/*
 	for(i=0;i<ITERATIONS;i++){			
 		verify_core(str, &len, &current_key);
 	}
+	*/
+
+	vtag[0] = verify_core(str, &len, &current_key);
+
+	printf("vtag[0]  = %llx ns\n", vtag[0]);
+
 	clock_gettime(id,&end);
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
