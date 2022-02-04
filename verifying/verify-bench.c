@@ -32,7 +32,7 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 
 const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
-
+//block current_key[16], next_key[16];
 
 
 /********************************************************************/
@@ -255,12 +255,6 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 *** Expand AES round keys
 *** Generate 8 key-state pairs
 **/
-static void crypto_int(void)
-{
-	AES_128_Key_Expansion(aeskey,&pk); 
-}
-
-
 
 /*Updating a key-sate pair using the current_state */
 void my_update(block * current_key, block * current_state, block * update_pair, block *sched_key)
@@ -270,6 +264,8 @@ void my_update(block * current_key, block * current_state, block * update_pair, 
 	current_key[0] = xor_block(update_pair[0], *current_state);
 	current_key[1] = xor_block(update_pair[1], *current_state);
 }
+
+
 
 
 
@@ -375,6 +371,22 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 	return out.u64[0];
 }
 
+
+
+/** Initial:
+*** Expand AES round keys
+*** Generate 8 key-state pairs
+**/
+static void crypto_int(void){
+
+	AES_128_Key_Expansion(aeskey,&pk); //expand aes round keys
+}
+
+
+
+
+
+
 #undef gen_7_blks
 #undef prernd_8
 #undef prernd_4
@@ -387,7 +399,7 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 
 long long ITERATIONS=100000;
 
-size_t len = 2048;
+size_t len = 256;
 
 int main(){
 	
