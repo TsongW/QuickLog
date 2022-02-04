@@ -1,6 +1,6 @@
 /**
 ** To run: 
-** gcc -o verify  verify-macros.c -mmmx  -maes -mpreferred-stack-boundary=4 
+** gcc -o verify  verify-bench.c -mmmx  -maes -mpreferred-stack-boundary=4 
 gcc  -Wall  -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
 **/
 
@@ -34,7 +34,6 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
 static block current_key, current_state;
-
 
 
 /********************************************************************/
@@ -158,8 +157,9 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
   	}while(0)
 
 
-#define aes_single(cipher_blks, sched)                               \
-	do{                                                              \
+#define aes_single(cipher_blks, sched, sign_keys)  \
+	do{      \
+		cipher_blks[0] = _mm_xor_si128(cipher_blks[0], sign_keys); \
 		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[1]); \
 		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[2]); \
 		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[3]); \
@@ -284,14 +284,14 @@ static void crypto_int(void)
 **/
 uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *current_key)
 {
-	uint16_t j, remaining, counter;
+	uint16_t remaining, counter;
 	size_t msg_len = *len;
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
 	block * sched;
 	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
-	uint64_t proof;
+	union { uint64_t u64[2]; block bl; } out;
 
 	int nblks;
 	nblks = (msg_len/112); 
@@ -340,7 +340,6 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 			}
 			cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
 			AES_ECB_2(cipher_blks,sched, mask);
-
 			tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
 			remaining -= 28;
 			counter +=2;
@@ -353,8 +352,7 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 				tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
 			}
 			tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
-			tmp.bl =_mm_xor_si128(tmp.bl, mask);
-			//aes_single(cipher_blks, sched);
+			aes_single(cipher_blks, sched, ,mask);
 			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
 			remaining -= 14;
 			counter +=1;
@@ -368,17 +366,14 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 			while(remaining--){
 				tmp.u8[remaining+1]=log_msg[remaining-1];
 			}
-			aes_single(cipher_blks, sched);
 			tmp.bl = xor_block(tmp.bl, mask);
+			aes_single(cipher_blks, sched, mask);
+			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
+			
 		}
     }
-	//next[0] = current_state;//0 xor ase_key xor current_state
-	//next[1] = xor_block(sched[0], next[1]); //1 xor ase_key xor current_state
-	AES_ECB_2(next, sched, mask);
-	//current_key = xor_block(next[0], current_state);
-	//current_state = xor_block(next[1], current_state);
-	//kernel_fpu_end();
-	return proof;
+	out.bl = _mm_loadu_si128((block*)&tag_blks[2]);
+	return out.u64[0];
 }
 
 #undef gen_7_blks
@@ -421,7 +416,7 @@ int main(){
 	char str4[8192];
 	char str5[8192];
 
-	int i,j, p, ret;
+	int i, p, ret;
 	struct timespec start, end;
 	long long  my_time;
 	clockid_t id = CLOCK_REALTIME;
@@ -435,7 +430,7 @@ int main(){
 
 
 	clock_gettime(id, &start);
-	for(j=0;j<ITERATIONS;j++){			
+	for(i=0;i<ITERATIONS;i++){			
 		verify_core(str, &len, &current_key);
 	}
 	clock_gettime(id,&end);
