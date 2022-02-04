@@ -253,6 +253,7 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 
 /** Initial:
 *** Expand AES round keys
+*** Generate 8 key-state pairs
 **/
 static void crypto_int(void)
 {
@@ -386,7 +387,7 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 
 long long ITERATIONS=100000;
 
-size_t len =256;
+size_t len = 512;
 
 int main(){
 	
