@@ -375,24 +375,22 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 
 /** Initial:
 *** Expand AES round keys
-*** Generate 8 key-state pairs
 **/
 static void crypto_int(void){
 
 	AES_128_Key_Expansion(aeskey,&pk); //expand aes round keys
 }
 
-
-
-
-
-
 #undef gen_7_blks
 #undef prernd_8
 #undef prernd_4
+#undef enc_2
+#undef enc_4
+#undef enc_8
 #undef AES_ECB_2
 #undef AES_ECB_4
 #undef AES_ECB_8
+#undef tag_blks_xor_8
 
 
 
@@ -420,10 +418,16 @@ int main(){
 	char str3[8192];
 	char str4[8192];
 	char str5[8192];
+	char str6[8192];
+	char str7[8192];
 	memset(str,'a',(len));
 	memset(str1,'b',(len));
 	memset(str2,'c',(len));
 	memset(str3,'d',(len));
+	memset(str4,'e',(len));
+	memset(str5,'f',(len));
+	memset(str6,'g',(len));
+	memset(str7,'h',(len));
 
 	crypto_int();
 
@@ -445,10 +449,10 @@ int main(){
 		vtag[1]=verify_core((unsigned char*)str1, &len, &current_key[3]);
 		vtag[2]=verify_core((unsigned char*)str2, &len, &current_key[5]);
 		vtag[3]=verify_core((unsigned char*)str3, &len, &current_key[7]);
-		vtag[4]=verify_core((unsigned char*)str, &len, &current_key[9]);
-		vtag[5]=verify_core((unsigned char*)str, &len, &current_key[11]);
-		vtag[6]=verify_core((unsigned char*)str, &len, &current_key[13]);
-		vtag[7]=verify_core((unsigned char*)str, &len, &current_key[15]);
+		vtag[4]=verify_core((unsigned char*)str4, &len, &current_key[9]);
+		vtag[5]=verify_core((unsigned char*)str5, &len, &current_key[11]);
+		vtag[6]=verify_core((unsigned char*)str6, &len, &current_key[13]);
+		vtag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
 	}
 	
 
