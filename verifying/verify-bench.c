@@ -35,7 +35,7 @@ const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
 //block current_key[16], next_key[16];
 int  ITERATIONS, len;
-
+long long my_time[6400000];
 
 /********************************************************************/
 // AES Key Expansion
@@ -433,7 +433,7 @@ int main(int argc, char* argv[]){
 	block  current_key[16];
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
-	long long med, my_time[6400000];
+	long long med;
 	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 	
@@ -510,7 +510,7 @@ int main(int argc, char* argv[]){
 
 	 median(ITERATIONS,  my_time);  
 	
-	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time[100]), len, ITERATIONS);
+	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time[1000]), len, ITERATIONS);
 
 	return 0;
 
