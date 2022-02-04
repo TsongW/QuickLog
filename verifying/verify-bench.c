@@ -1,11 +1,9 @@
 /**
 ** To run: 
 ** gcc -o verify  verify-bench.c  -Os  -mmmx -msse2  -maes -mpreferred-stack-boundary=4 
-   gcc  -Wall  -mmmx  -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
+   (slow)//gcc  -Wall  -mmmx  -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
 
 **/
-
-
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -34,7 +32,7 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 
 const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
-static block current_key, current_state;
+
 
 
 /********************************************************************/
@@ -409,28 +407,27 @@ size_t ITERATIONS=1;
 size_t len =256;
 
 int main(){
+	
+	int i;
+	uint64_t vtag[8];
+	block current_state, current_key[8];
+	struct timespec start, end;
+	long long  my_time;
+	clockid_t id = CLOCK_MONOTONIC;
 
-    char str[8192];
+	
+	char str[8192];
 	char str1[8192];
 	char str2[8192];
 	char str3[8192];
 	char str4[8192];
 	char str5[8192];
-
-	uint64_t vtag[8];
-	
-	int i;
-	struct timespec start, end;
-	long long  my_time;
-	clockid_t id = CLOCK_REALTIME;
-
-	crypto_int();
 	memset(str,'a',(len));
 	memset(str1,'b',(len));
 	memset(str2,'c',(len));
 	memset(str3,'d',(len));
 
-
+	crypto_int();
 
 	clock_gettime(id, &start);
 	/*
@@ -439,15 +436,13 @@ int main(){
 	}
 	*/
 
-	vtag[0]=verify_core((unsigned char*)str, &len, &current_key);
+	vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 	
 	clock_gettime(id,&end);
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 
 	printf("My verification time = %lld ns\n", (long long) my_time);
-
-
 
 	return 0;
 
