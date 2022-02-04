@@ -253,7 +253,6 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 
 /** Initial:
 *** Expand AES round keys
-*** Genreate first signing key and state pair 
 **/
 static void crypto_int(void)
 {
@@ -268,8 +267,8 @@ static void crypto_int(void)
 	init_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);
 	mask = _mm_xor_si128(sched[0], s_0);/*xor the intial state with the aes public key*/
 	AES_ECB_2(init_pair, sched, mask);
-	current_state = xor_block(init_pair[0], s_0);
-	current_key = xor_block(init_pair[1], s_0);
+	//current_state = xor_block(init_pair[0], s_0);
+	//current_key = xor_block(init_pair[1], s_0);
 }
 
 
@@ -415,6 +414,7 @@ int main(){
 	long long  my_time;
 	clockid_t id = CLOCK_MONOTONIC;
 
+	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 	
 	char str[8192];
 	char str1[8192];
