@@ -403,7 +403,7 @@ size_t len = 256;
 
 int main(){
 	
-	int i;
+	int i,j;
 	uint64_t vtag[8];
 	block  current_key[16], update_pair[2];
 	struct timespec start, end;
@@ -442,9 +442,9 @@ int main(){
 
 		/*Verifying 8 messages*/
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
-		vtag[1]=verify_core((unsigned char*)str, &len, &current_key[3]);
-		vtag[2]=verify_core((unsigned char*)str, &len, &current_key[5]);
-		vtag[3]=verify_core((unsigned char*)str, &len, &current_key[7]);
+		vtag[1]=verify_core((unsigned char*)str1, &len, &current_key[3]);
+		vtag[2]=verify_core((unsigned char*)str2, &len, &current_key[5]);
+		vtag[3]=verify_core((unsigned char*)str3, &len, &current_key[7]);
 		vtag[4]=verify_core((unsigned char*)str, &len, &current_key[9]);
 		vtag[5]=verify_core((unsigned char*)str, &len, &current_key[11]);
 		vtag[6]=verify_core((unsigned char*)str, &len, &current_key[13]);
@@ -457,7 +457,7 @@ int main(){
 	clock_gettime(id,&end);
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
-
+	
 	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
 
 	return 0;
