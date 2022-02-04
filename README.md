@@ -1,4 +1,4 @@
-This repository contains the source code of the prototypes of the secure logging scheme QuickLog the paper:
+This repository contains the source code of the prototypes for secure logging scheme QuickLog in the paper:
 "Faster Yet Safer: Logging System Via Fixed-Key Blockcipher".
 
 
