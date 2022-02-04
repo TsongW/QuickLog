@@ -409,7 +409,7 @@ int compare(const void* a, const void* b)
     return 0;
 }
  
-long long median(int n, const long long * x) {
+long long median(int n,  long long * x) {
     long long temp;
     int i, j;
     qsort(x, n, sizeof(long long), compare);
