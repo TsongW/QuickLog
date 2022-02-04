@@ -433,13 +433,13 @@ int main(){
 	
 	for(i=0;i<ITERATIONS;i++){			
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
+		/*vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
-		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
+		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);*/
 	}
 	
 
@@ -449,7 +449,7 @@ int main(){
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 
-	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
+	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS)) );
 
 	return 0;
 
