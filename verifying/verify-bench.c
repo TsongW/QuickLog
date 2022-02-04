@@ -256,20 +256,23 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 **/
 static void crypto_int(void)
 {
-	block s_0;/* initial State */
-	block mask, init_pair[2];
-	block * sched;
-	AES_128_Key_Expansion(aeskey,&pk); //expand aes round keys
-	sched = ((block *)(pk.rd_key)); //point to AES round keys
-	sched[11] = sched[0];
-	s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);
-	init_pair[0] = zero_block();/*Update 0 for state, 1 for key*/
-	init_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);
-	mask = _mm_xor_si128(sched[0], s_0);/*xor the intial state with the aes public key*/
-	AES_ECB_2(init_pair, sched, mask);
-	//current_state = xor_block(init_pair[0], s_0);
-	//current_key = xor_block(init_pair[1], s_0);
+	AES_128_Key_Expansion(aeskey,&pk); 
 }
+
+
+
+
+void my_update(block * current_key, block * current_state, block * update_pair, block *sched_key)
+{
+	block mask = xor_block(sched[0], *current_state);
+	AES_ECB_2(update_pair,sched_key, mask);
+	current_key[0] = xor_block(update_pair[0], *current_state);
+	current_key[1] = xor_block(update_pair[1], *current_state);
+}
+
+
+
+
 
 
 
@@ -377,31 +380,14 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 #undef gen_7_blks
 #undef prernd_8
 #undef prernd_4
+#undef AES_ECB_2
+#undef AES_ECB_4
 #undef AES_ECB_8
 
 
 
-#if 0
-static int verify_signature(u64 integrity_proof)
-{
-	
 
-	size_t log_msg_len = strlen(log_msg);
-
-	// Regenerate the integrity proof with the current key
-	u64 new_proof = siphash(log_msg, log_msg_len, &(key));
-
-	if (new_proof != integrity_proof){
-		printf("Failed verification for %d-th log entry\n", i);
-		break;
-	}	
-
-	return 0;
-}
-#endif 
-
-
-long long  ITERATIONS=100000;
+long long ITERATIONS=100000;
 
 size_t len =256;
 
@@ -409,12 +395,14 @@ int main(){
 	
 	int i;
 	uint64_t vtag[8];
-	block current_state, current_key[8];
+	block  current_key[16], update_mask, update_pair[2];
 	struct timespec start, end;
 	long long  my_time;
 	clockid_t id = CLOCK_MONOTONIC;
-
+	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
+	update_pair[0] = zero_block();/*0 for updatting state*/
+	update_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	
 	char str[8192];
 	char str1[8192];
@@ -431,7 +419,12 @@ int main(){
 
 	clock_gettime(id, &start);
 	
-	for(i=0;i<ITERATIONS;i++){			
+	for(i=0;i<ITERATIONS;i++){		
+		/*Generating 8 signing keys*/
+
+		
+
+
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[1]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[2]=verify_core((unsigned char*)str, &len, &current_key[0]);
