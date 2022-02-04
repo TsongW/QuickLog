@@ -431,7 +431,7 @@ int main(){
 	memset(str7,'h',(len));
 
 	crypto_int();
-	sleep(1);
+	sleep(0.5);
 
 	clock_gettime(id, &start);
 	for(i=0;i<ITERATIONS;i++){		
@@ -461,6 +461,17 @@ int main(){
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
 	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
+	printf("vtag[0]= %ld ns\n", vtag[0] );
+	printf("vtag[1]= %ld ns\n", vtag[1] );
+	printf("vtag[2]= %ld ns\n", vtag[2] );
+	printf("vtag[3]= %ld ns\n", vtag[3] );
+	printf("vtag[4]= %ld ns\n", vtag[4] );
+	printf("vtag[5]= %ld ns\n", vtag[5] );
+	printf("vtag[6]= %ld ns\n", vtag[6] );
+	printf("vtag[7]= %ld ns\n", vtag[7] );
+
+	
+
 
 	return 0;
 
