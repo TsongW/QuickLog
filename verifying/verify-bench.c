@@ -419,9 +419,15 @@ int main(){
 	for(i=0;i<ITERATIONS;i++){		
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0, update_pair, sched_key);
-		
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
 
-
+		/*Verifying 8 messages*/
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[1]=verify_core((unsigned char*)str, &len, &current_key[0]);
 		vtag[2]=verify_core((unsigned char*)str, &len, &current_key[0]);
