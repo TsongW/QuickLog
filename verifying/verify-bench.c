@@ -261,7 +261,7 @@ static void crypto_int(void)
 
 
 
-
+/*Updating a key-sate pair using the current_state */
 void my_update(block * current_key, block * current_state, block * update_pair, block *sched_key)
 {
 	block mask = xor_block(sched_key[0], *current_state);
@@ -272,16 +272,13 @@ void my_update(block * current_key, block * current_state, block * update_pair, 
 
 
 
-
-
-
-
 /**  
-* MAC, signing a log message and updating the signing-key & state
 * Input @log_msg: a log data, 
+        @len: the lenght of input data,
+		@current_key: the signing key
 * Computing block format: a block(16 bytes) contains "<i>||M_i",  
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
-* Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
+* Output: a proof, out(uint64_t)
 **/
 uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *current_key)
 {
