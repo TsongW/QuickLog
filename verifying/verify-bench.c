@@ -403,9 +403,9 @@ static int verify_signature(u64 integrity_proof)
 #endif 
 
 
-int ITERATIONS=1;
+size_t ITERATIONS=1;
 
-int len =256;
+size_t len =256;
 
 int main(){
 
