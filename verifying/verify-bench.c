@@ -396,7 +396,7 @@ static void crypto_int(void){
 
 
 
-long long ITERATIONS=10;
+long long ITERATIONS=1;
 
 size_t len = 256;
 
