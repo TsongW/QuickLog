@@ -264,7 +264,7 @@ static void crypto_int(void)
 
 void my_update(block * current_key, block * current_state, block * update_pair, block *sched_key)
 {
-	block mask = xor_block(sched[0], *current_state);
+	block mask = xor_block(sched_key[0], *current_state);
 	AES_ECB_2(update_pair,sched_key, mask);
 	current_key[0] = xor_block(update_pair[0], *current_state);
 	current_key[1] = xor_block(update_pair[1], *current_state);
