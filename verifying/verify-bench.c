@@ -34,7 +34,8 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
 //block current_key[16], next_key[16];
-
+long long ITERATIONS;
+size_t len;
 
 /********************************************************************/
 // AES Key Expansion
@@ -400,11 +401,9 @@ static void crypto_int(void){
 
 
 
-long long ITERATIONS=1;
 
-size_t len = 256;
 
-int main(){
+int main(int argc, char* argv[]){
 	
 	int i,j;
 	uint64_t tag[8], vtag[8];
@@ -414,6 +413,14 @@ int main(){
 	clockid_t id = CLOCK_MONOTONIC;
 	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
+
+	if (argc >=2) len = atoi(argv[1]);
+    else len = 256;
+    if (argc >= 3) 
+	ITERATIONS = atoi(argv[2]); 
+    else ITERATIONS = 100000;
+
+
 	//initial log messages------------------------------------
 	char str[4112];
 	char str1[4112];
@@ -469,7 +476,7 @@ int main(){
 
 		/*Verifying*/
 		for(j=0;j<8;j++){
-			if(tag[0]!=vtag[0] ) printf("Detect no match for tag=%lld\n", ITERATIONS+j);
+			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
 	}
 	clock_gettime(id,&end);
@@ -478,18 +485,6 @@ int main(){
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
 	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
-	
-	printf("tag[0]= %ld;\n", vtag[0] );
-	printf("tag[1]= %ld;\n", vtag[1] );
-	printf("tag[2]= %ld;\n", vtag[2] );
-	printf("tag[3]= %ld;\n", vtag[3] );
-	printf("tag[4]= %ld;\n", vtag[4] );
-	printf("tag[5]= %ld;\n", vtag[5] );
-	printf("tag[6]= %ld;\n", vtag[6] );
-	printf("tag[7]= %ld;\n", vtag[7] );
-
-	
-
 
 	return 0;
 
