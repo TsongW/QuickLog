@@ -509,10 +509,8 @@ int main(int argc, char* argv[]){
 	clock_gettime(id,&end);
 	
 	my_time = ( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
-
-	 median(ITERATIONS,  my_time);  
 	
-	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time), len, ITERATIONS);
+	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time/8), len, ITERATIONS);
 
 	return 0;
 
