@@ -1,7 +1,7 @@
 /**
 ** To run: 
-** gcc -o verify  verify-bench.c -mmmx  -maes -mpreferred-stack-boundary=4 
-gcc  -Wall  -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
+** gcc -o verify  verify-bench.c  -Os  -mmmx  -msse2  -maes -mpreferred-stack-boundary=4 
+gcc  -Wall  -mmmx  -msse2  -maes -mpreferred-stack-boundary=4  -Os -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
 **/
 
 
@@ -415,6 +415,7 @@ int main(){
 	char str3[8192];
 	char str4[8192];
 	char str5[8192];
+
 	uint64_t vtag[8];
 	int i, p, ret;
 	struct timespec start, end;
@@ -436,7 +437,8 @@ int main(){
 	}
 	*/
 
-	verify_core(str, &len, &current_key);
+	vtag[0] = verify_core(str, &len, &current_key);
+	printf("vtag[0] = %ld ns\n",vtag[0]);
 	
 	clock_gettime(id,&end);
 
