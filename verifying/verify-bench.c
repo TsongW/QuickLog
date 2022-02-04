@@ -413,14 +413,14 @@ int main(){
 	update_pair[0] = zero_block();/*0 for updatting state*/
 	update_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	
-	char str[8192];
-	char str1[8192];
-	char str2[8192];
-	char str3[8192];
-	char str4[8192];
-	char str5[8192];
-	char str6[8192];
-	char str7[8192];
+	char str[4112];
+	char str1[4112];
+	char str2[4112];
+	char str3[4112];
+	char str4[4112];
+	char str5[4112];
+	char str6[4112];
+	char str7[4112];
 	memset(str,'a',(len));
 	memset(str1,'b',(len));
 	memset(str2,'c',(len));
@@ -431,7 +431,7 @@ int main(){
 	memset(str7,'h',(len));
 
 	crypto_int();
-	sleep(2);
+	sleep(1);
 
 	clock_gettime(id, &start);
 	for(i=0;i<ITERATIONS;i++){		
