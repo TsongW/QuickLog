@@ -477,7 +477,7 @@ int main(int argc, char* argv[]){
 
 	
 	for(i=0;i<ITERATIONS;i++){
-		
+
 		clock_gettime(id, &start);		
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0,  sched_key);
@@ -511,7 +511,7 @@ int main(int argc, char* argv[]){
 
 	 median(ITERATIONS,  my_time);  
 	
-	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) median), len, ITERATIONS);
+	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time[10000]), len, ITERATIONS);
 
 	return 0;
 
