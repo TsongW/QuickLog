@@ -1,9 +1,3 @@
-/**
-** To run: 
-**  (Ubuntu) //gcc -o verify  verify-bench.c  -Os  -mmmx -msse2  -maes -mpreferred-stack-boundary=4 
-   (slow)//gcc  -Wall  -mmmx  -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
-   (CentOS)//gcc -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
-**/
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
