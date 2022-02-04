@@ -442,7 +442,7 @@ int main(){
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 
-	printf("My verification time = %lld ns\n", (long long) my_time/(ITERATIONS));
+	printf("My verification time = %lld ns\n", (long long) my_time);
 
 
 
