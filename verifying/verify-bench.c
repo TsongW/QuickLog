@@ -396,14 +396,14 @@ static void crypto_int(void){
 
 
 
-long long ITERATIONS=100000;
+long long ITERATIONS=10;
 
 size_t len = 256;
 
 int main(){
 	
 	int i,j;
-	uint64_t vtag[8];
+	uint64_t tag[8], vtag[8];
 	block  current_key[16], update_pair[2];
 	struct timespec start, end;
 	long long  my_time;
@@ -412,7 +412,7 @@ int main(){
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 	update_pair[0] = zero_block();/*0 for updatting state*/
 	update_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
-	
+	//initial log messages------------------------------------
 	char str[4112];
 	char str1[4112];
 	char str2[4112];
@@ -429,8 +429,15 @@ int main(){
 	memset(str5,'f',(len));
 	memset(str6,'g',(len));
 	memset(str7,'h',(len));
-
-	
+	tag[0]= -1503165793497046589;
+	tag[1]= -1494563118392847569;
+	tag[2]= 618128250264492585;
+	tag[3]= 5634652128064296978;
+	tag[4]= 2541009476506789474;
+	tag[5]= 8792810883724515929;
+	tag[6]= 2750433781415248717;
+	tag[7]= 4896217556927850054;
+	//initial log messages done-------------------------------------
 
 	crypto_int();
 	sleep(0.5);
@@ -447,7 +454,7 @@ int main(){
 		my_update(&current_key[12], &current_key[10], update_pair, sched_key);
 		my_update(&current_key[14], &current_key[12], update_pair, sched_key);
 
-		/*Verifying 8 messages*/
+		/*Computing 8 messages*/
 		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
 		vtag[1]=verify_core((unsigned char*)str1, &len, &current_key[3]);
 		vtag[2]=verify_core((unsigned char*)str2, &len, &current_key[5]);
@@ -456,6 +463,11 @@ int main(){
 		vtag[5]=verify_core((unsigned char*)str5, &len, &current_key[11]);
 		vtag[6]=verify_core((unsigned char*)str6, &len, &current_key[13]);
 		vtag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
+
+		/*Verifying*/
+		for(j=0;j<8;j++){
+			if(tag[0]!=vtag[0] ) printf("Detect no match for tag=%lld\n", ITERATIONS+j);
+		}
 	}
 	clock_gettime(id,&end);
 	
@@ -463,14 +475,15 @@ int main(){
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
 	printf("My verification time = %lld ns\n", ((long long) my_time/(ITERATIONS*8)) );
-	printf("tag[0]= %ld;\n", vtag[0] );
+	
+	/*printf("tag[0]= %ld;\n", vtag[0] );
 	printf("tag[1]= %ld;\n", vtag[1] );
 	printf("tag[2]= %ld;\n", vtag[2] );
 	printf("tag[3]= %ld;\n", vtag[3] );
 	printf("tag[4]= %ld;\n", vtag[4] );
 	printf("tag[5]= %ld;\n", vtag[5] );
 	printf("tag[6]= %ld;\n", vtag[6] );
-	printf("tag[7]= %ld;\n", vtag[7] );
+	printf("tag[7]= %ld;\n", vtag[7] );*/
 
 	
 
