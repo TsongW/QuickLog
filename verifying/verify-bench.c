@@ -2,9 +2,8 @@
 ** To run: 
 ** gcc -o verify  verify-bench.c -mmmx  -maes -mpreferred-stack-boundary=4 
 gcc  -Wall  -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
+
 **/
-
-
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -439,7 +438,7 @@ int main(){
 
 	vtag[0] = verify_core(str, &len, &current_key);
 
-	printf("vtag[0]  = %llx ns\n", vtag[0]);
+	//printf("vtag[0]  = %llx ns\n", vtag[0]);
 
 	clock_gettime(id,&end);
 
