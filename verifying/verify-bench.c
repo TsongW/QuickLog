@@ -352,7 +352,7 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 				tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
 			}
 			tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
-			aes_single(cipher_blks, sched, ,mask);
+			aes_single(cipher_blks, sched,mask);
 			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
 			remaining -= 14;
 			counter +=1;
