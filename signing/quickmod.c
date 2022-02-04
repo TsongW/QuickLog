@@ -276,7 +276,7 @@ static void first_blks(block *cipher_blks, uint16_t counter, unsigned char *log_
 	//ecb_8(cipher_blks,sched);
 }
 
-static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const unsigned char *log_msg, block *sched, block sign_keys)
+static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const unsigned char *log_msg, const block *sched, block sign_keys)
 {
 		if(counter){		
 			cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); 
