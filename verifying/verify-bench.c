@@ -193,24 +193,23 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
 	}while (0)
 
-
-static inline void AES_ECB_4(block *cipher_blks, block *sched, block sign_keys)
-{
-    prernd_4(cipher_blks,sign_keys);
-	enc_4(cipher_blks, sched[1]);
-	enc_4(cipher_blks, sched[2]);
-	enc_4(cipher_blks, sched[3]);
-	enc_4(cipher_blks, sched[4]);
-	enc_4(cipher_blks, sched[5]);
-	enc_4(cipher_blks, sched[6]);
-	enc_4(cipher_blks, sched[7]);
-	enc_4(cipher_blks, sched[8]);
-	enc_4(cipher_blks, sched[9]);
-	cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);
-	cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]);		
-	cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]);
-	cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]);
-}
+#define AES_ECB_4(cipher_blks, sched, sign_keys)   \
+	do{                                        	   \
+		prernd_4(cipher_blks,sign_keys);           \
+		enc_4(cipher_blks, sched[1]);              \
+		enc_4(cipher_blks, sched[2]);              \
+		enc_4(cipher_blks, sched[3]);              \
+		enc_4(cipher_blks, sched[4]);              \
+		enc_4(cipher_blks, sched[5]);              \
+		enc_4(cipher_blks, sched[6]);              \
+		enc_4(cipher_blks, sched[7]);              \
+		enc_4(cipher_blks, sched[8]);              \
+		enc_4(cipher_blks, sched[9]);              \
+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
+		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
+		cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]); \
+		cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]); \
+	}while (0)
 
 
 #define AES_ECB_8(cipher_blks, sched, sign_keys)   \
@@ -237,9 +236,7 @@ static inline void AES_ECB_4(block *cipher_blks, block *sched, block sign_keys)
 
 
 
-
-
-static inline void cmpt_4_blks(block *cipher_blks, __u16 counter, const char *log_msg, block *sched, block sign_keys)
+static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_msg, block *sched, block sign_keys)
 {
 
 	if(counter){//Not the first block		
@@ -251,26 +248,7 @@ static inline void cmpt_4_blks(block *cipher_blks, __u16 counter, const char *lo
 	cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
 	cipher_blks[2]  = gen_logging_blk((block*)(log_msg+26),counter+3); 
 	cipher_blks[3]  = gen_logging_blk((block*)(log_msg+40),counter+4); 
-	/*AES Preround*/
-	prernd_4(cipher_blks,sign_keys);
 	AES_ECB_4(cipher_blks,sched, sign_keys);
-}
-
-
-static inline void cmpt_2_blks(block *cipher_blks, __u16 counter, const char *log_msg, block *sched, block sign_keys)
-{
-    	
-	if(counter){//Not the first block		
-		cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); 
-	}else{//contains the first block
-		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
-		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-	}
-	cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
-	/*AES Preround */
-	//cipher_blks[0] =_mm_xor_si128(cipher_blks[0], sign_keys);
-	//cipher_blks[1] =_mm_xor_si128(cipher_blks[1], sign_keys);
-	AES_ECB_2(cipher_blks,sched, sign_keys);	
 }
 
 
@@ -307,15 +285,16 @@ static void crypto_int(void)
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
 **/
-static  block  mac_core( char *log_msg)
+uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *current_key)
 {
 	uint16_t j, remaining, counter;
-	int msg_len=len;
+	size_t msg_len = *len;
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
 	block * sched;
-	block mask, cipher_blks[9], tag_blks[3];
+	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
+	uint64_t proof;
 
 	int nblks;
 	nblks = (msg_len/112); 
@@ -323,26 +302,23 @@ static  block  mac_core( char *log_msg)
 	counter =0;
 	sched = ((block *)(pk.rd_key)); //point to AES round keys	
  
-	//xor the signing key with the aes public key
-	mask =_mm_xor_si128(sched[0], current_key);
-	tag_blks[2] = current_key;
+	mask =_mm_xor_si128(sched[0], *current_key);//xor the signing key with the aes public key
+	tag_blks[2] = _mm_loadu_si128(current_key);
 
 	if(nblks)//start 8 blocks parallel computing 
 	{
 		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
 		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
 		gen_7_blks(cipher_blks,log_msg,counter);
-		//AES_ECB_8(cipher_blks,sched, mask);
+		AES_ECB_8(cipher_blks,sched, mask);
 		tag_blks_xor_8(tag_blks,cipher_blks);
 		counter +=8;
 		log_msg +=110;	
 		--nblks;
 		while(nblks){	
-			//cmpt_8_blks(cipher_blks, counter, log_msg, sched, mask);
 			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
 			gen_7_blks(cipher_blks,log_msg,counter);
-			//AES_ECB_8(cipher_blks,sched, mask);
-			/*(III)Xor each block*/
+			AES_ECB_8(cipher_blks,sched, mask);
 			tag_blks_xor_8(tag_blks,cipher_blks);
 			counter +=8;
 			log_msg +=110;
@@ -405,7 +381,7 @@ static  block  mac_core( char *log_msg)
 	current_key = xor_block(next[0], current_state);
 	current_state = xor_block(next[1], current_state);
 	//kernel_fpu_end();
-	return tag_blks[2];
+	return proof;
 }
 
 #undef gen_7_blks
@@ -463,10 +439,7 @@ int main(){
 
 	clock_gettime(id, &start);
 	for(j=0;j<ITERATIONS;j++){			
-		mac_core(str);	
-		mac_core(str1);	
-		//mac_core(str2);	
-		//mac_core(str3);	
+		verify_core(str, &len, &current_key);
 	}
 	clock_gettime(id,&end);
 
