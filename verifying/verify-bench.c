@@ -1,8 +1,8 @@
 /**
 ** To run: 
-** gcc -o verify  verify-bench.c  -Os  -mmmx -msse2  -maes -mpreferred-stack-boundary=4 
+**  (Ubuntu) //gcc -o verify  verify-bench.c  -Os  -mmmx -msse2  -maes -mpreferred-stack-boundary=4 
    (slow)//gcc  -Wall  -mmmx  -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
-
+   (CentOS)//gcc -mmmx -msse2 -msse  -maes -O3  -mpreferred-stack-boundary=4  -march=native -o verify  verify-bench.c
 **/
 #include <time.h>
 #include <stdio.h>
@@ -401,7 +401,7 @@ static int verify_signature(u64 integrity_proof)
 #endif 
 
 
-size_t ITERATIONS=1;
+long long  ITERATIONS=100000;
 
 size_t len =256;
 
@@ -430,19 +430,19 @@ int main(){
 	crypto_int();
 
 	clock_gettime(id, &start);
-	/*
+	
 	for(i=0;i<ITERATIONS;i++){			
-		verify_core(str, &len, &current_key);
+		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 	}
-	*/
+	
 
-	vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
+	//vtag[0]=verify_core((unsigned char*)str, &len, &current_key[0]);
 	
 	clock_gettime(id,&end);
 
 	my_time = ((long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 
-	printf("My verification time = %lld ns\n", (long long) my_time);
+	printf("My verification time = %lld ns\n", ((long long) my_time/ITERATIONS));
 
 	return 0;
 
