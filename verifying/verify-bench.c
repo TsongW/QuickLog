@@ -375,8 +375,8 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 	//next[0] = current_state;//0 xor ase_key xor current_state
 	//next[1] = xor_block(sched[0], next[1]); //1 xor ase_key xor current_state
 	AES_ECB_2(next, sched, mask);
-	current_key = xor_block(next[0], current_state);
-	current_state = xor_block(next[1], current_state);
+	//current_key = xor_block(next[0], current_state);
+	//current_state = xor_block(next[1], current_state);
 	//kernel_fpu_end();
 	return proof;
 }
