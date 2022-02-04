@@ -392,7 +392,7 @@ int main(){
 	
 	int i;
 	uint64_t vtag[8];
-	block  current_key[16], update_mask, update_pair[2];
+	block  current_key[16], update_pair[2];
 	struct timespec start, end;
 	long long  my_time;
 	clockid_t id = CLOCK_MONOTONIC;
@@ -418,7 +418,7 @@ int main(){
 	
 	for(i=0;i<ITERATIONS;i++){		
 		/*Generating 8 signing keys*/
-
+		my_update(&current_key[0], &s_0, update_pair, sched_key);
 		
 
 
