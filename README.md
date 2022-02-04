@@ -1,8 +1,6 @@
 This repository contains the source code of the prototypes for secure logging scheme QuickLog in the paper:
 "Faster Yet Safer: Logging System Via Fixed-Key Blockcipher".
 
-
-
 # Overview
 QuickLog follows the blueprint in the work of Bellare and Yee (CT-RSA 2003) but uses a one-time MAC instead of a standard MAC. 
 The key idea for performance improvement is to build both the one-time MAC and the key-derivation function on top of a fixed-key blockcipher.
