@@ -35,7 +35,6 @@ const static unsigned char aeskey[16] = {0};
 static AES_KEY pk;
 //block current_key[16], next_key[16];
 int  ITERATIONS, len;
-long long my_time[6400000];
 
 /********************************************************************/
 // AES Key Expansion
@@ -398,6 +397,7 @@ static void crypto_int(void){
 #undef AES_ECB_8
 #undef tag_blks_xor_8
 
+#if 0
 //****************median function*************************
 int compare(const void* a, const void* b)
 {
@@ -422,7 +422,7 @@ long long median(int n,  long long * x) {
     }
 }
 //*****************************************************************
-
+#endif
 
 
 
@@ -433,7 +433,7 @@ int main(int argc, char* argv[]){
 	block  current_key[16];
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
-	long long med;
+	long long my_time;
 	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 	
@@ -475,10 +475,10 @@ int main(int argc, char* argv[]){
 	crypto_int();
 	sleep(0.5);
 
-	
+	clock_gettime(id, &start);
 	for(i=0;i<ITERATIONS;i++){
 
-		clock_gettime(id, &start);		
+				
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0,  sched_key);
 		my_update(&current_key[2], &current_key[0],  sched_key);
@@ -503,15 +503,16 @@ int main(int argc, char* argv[]){
 		for(j=0;j<8;j++){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
-		clock_gettime(id,&end);
-		my_time[i] = ( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
+		
+		
 	}
+	clock_gettime(id,&end);
 	
-	
+	my_time = ( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 
 	 median(ITERATIONS,  my_time);  
 	
-	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time[1]), len, ITERATIONS);
+	printf("My verification median = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time), len, ITERATIONS);
 
 	return 0;
 
