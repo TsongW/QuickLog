@@ -22,5 +22,5 @@ To test QuickLog signing in kernel module:
 To test QuickLog verifying in user space:
 
 - Enter the `verifying` directory and run `make` to compile.
-- Using `./verify [data length]  [iteration]` to run (or run with the default setting by`./verify` ).
+- Using `./verify [data length]  [iteration]` to run (or run with the default setting: `./verify` ).
 - When you are done, using `make clean` to remove.
