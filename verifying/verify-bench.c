@@ -387,7 +387,7 @@ uint64_t verify_core( unsigned char *log_msg, const size_t *len,  const block *c
 
 long long ITERATIONS=100000;
 
-size_t len = 1024;
+size_t len = 4096;
 
 int main(){
 	
