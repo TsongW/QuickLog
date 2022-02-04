@@ -177,40 +177,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 
 
 
-#if 0
-static inline void AES_ECB_2(block *cipher_blks, block *sched, block sign_keys)
-{
-    cipher_blks[0] =_mm_xor_si128(cipher_blks[0], sign_keys);
-	cipher_blks[1] =_mm_xor_si128(cipher_blks[1], sign_keys);
-	enc_2(cipher_blks, sched[1]);
-	enc_2(cipher_blks, sched[2]);
-	enc_2(cipher_blks, sched[3]);
-	enc_2(cipher_blks, sched[4]);
-	enc_2(cipher_blks, sched[5]);
-	enc_2(cipher_blks, sched[6]);
-	enc_2(cipher_blks, sched[7]);
-	enc_2(cipher_blks, sched[8]);
-	enc_2(cipher_blks, sched[9]);
-	cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);
-	cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]);		
-}
-
-static inline void AES_ECB_4(block *cipher_blks, block *sched)
-{
-    __u8  j;
-	for(j=0;j<10;j++){
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[j]); 
-		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], sched[j]); 
-		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], sched[j]); 
-		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], sched[j]); 
-	}	
-	cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);
-	cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]);		
-	cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]);
-	cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]);
-}
-#endif
-
 #define AES_ECB_2(cipher_blks, sched, sign_keys)   \
 	do{                                        	   \
 		cipher_blks[0] =_mm_xor_si128(cipher_blks[0], sign_keys); \
@@ -385,7 +351,7 @@ static  block  mac_core( char *log_msg)
 	}//end of nblks
 	if (remaining){
 		if(remaining >=56){//4-block, 4*14=56 bytes log data
-			//cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
+			cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
 			tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
 			tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
 			remaining -= 56;
@@ -393,8 +359,6 @@ static  block  mac_core( char *log_msg)
 			log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
 		}
 		if (remaining >= 28) {//2-block, 2*14=28 bytes log data
-			//cmpt_2_blks(cipher_blks,counter, log_msg, sched, mask);
-
 			if(counter){ 
 				cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
 			}else{//contains the first block
@@ -402,7 +366,7 @@ static  block  mac_core( char *log_msg)
 				cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
 			}
 			cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
-			//AES_ECB_2(cipher_blks,sched, mask);
+			AES_ECB_2(cipher_blks,sched, mask);
 
 			tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
 			remaining -= 28;
