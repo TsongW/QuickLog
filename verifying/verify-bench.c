@@ -418,6 +418,7 @@ int main(){
 	char str5[8192];
 
 	uint64_t vtag[8];
+	
 	int i;
 	struct timespec start, end;
 	long long  my_time;
@@ -438,7 +439,7 @@ int main(){
 	}
 	*/
 
-	verify_core((unsigned char*)str, &len, &current_key);
+	vtag[0]=verify_core((unsigned char*)str, &len, &current_key);
 	
 	clock_gettime(id,&end);
 
