@@ -1,6 +1,5 @@
 #include <time.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <string.h>   
 #include <stdlib.h>
 #include <unistd.h>
@@ -17,8 +16,6 @@
 #else
 	#include <stdint.h>
 #endif
-
-
 
 /* Some helper functions */
 #define rnds 10 //AES rounds
@@ -68,7 +65,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
     EXPAND_ASSIST(x0,x1,x2,x0,255,54);  kp[10] = x0;
 }
 #undef EXPAND_ASSIST
-
 
 
 //-----------some helper functions------------------------------
