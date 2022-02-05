@@ -20,7 +20,7 @@ typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
 
 const static unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
-static AES_KEY pk;
+static AES_KEY const_aeskey;
 static block current_key, current_state;
 
 /* Some helper functions */
@@ -315,9 +315,9 @@ static void crypto_int(void)
 	get_random_bytes(s_0, 16);
 	/* initial State */
 	kernel_fpu_begin();	
-	AES_128_Key_Expansion(aeskey,&pk); //inital aes round keys
+	AES_128_Key_Expansion(aeskey,&const_aeskey); //inital aes round keys
 	/*generating the first key-stae pair*/
-	sched = ((block *)(pk.rd_key));
+	sched = ((block *)(const_aeskey.rd_key));
 	mask = xor_block(sched[0], *(block *)s_0);/*xor the intial state with the aes fixed key*/
 	AES_ECB_2(init_pair, sched, mask);
 	current_state = xor_block(init_pair[0], *(block *)s_0);
@@ -345,7 +345,7 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	nblks = (msg_len/112); 
 	remaining=(uint16_t)(msg_len%112);
 	counter =0;
-	sched = ((block *)(pk.rd_key)); //point to AES round keys	
+	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
 	out = ((block *)(proof));
 	//xor the signing key with the aes fixed key
 	mask =_mm_xor_si128(sched[0], current_key);
