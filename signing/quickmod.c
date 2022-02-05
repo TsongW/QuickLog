@@ -309,6 +309,7 @@ static void cmpt_2_blks(block *cipher_blks, uint16_t counter, const unsigned cha
 **/
 static void crypto_int(void)
 {
+	pr_info("Entering: %s\n", __func__);
 	unsigned char s_0[16];/* initial State */
 	block mask, init_pair[2];
 	block * sched;
@@ -338,7 +339,7 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
 	block * sched, *out;
-	block mask, cipher_blks[9], tag_blks[3];
+	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
 	__u64 proof[2];
 	int nblks;
@@ -441,16 +442,20 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 
 
 
-static int __init cryptomod_init(void)
+static int __init quickmod_init(void)
 {
-	pr_info("Module started.\n");
+	pr_info("Module started: %s\n",  __func__);
+
 	unsigned char str[8200]; 
+	unsigned long long start_time, end_time, my_time;
     memset(str,'a',(8192));
     int j, times;
 	times = iteration+8000;
 	__u64 tag;	
 	crypto_int();
-	pr_info("------crypto_int is done ----------\n");
+
+	msleep(10);
+	start_time = ktime_get_ns();
 
 	for(j=0;j<times;j++)
 	{	
@@ -458,19 +463,20 @@ static int __init cryptomod_init(void)
 		tag = mac_core(str,len);
 		kernel_fpu_end();
 		
-		if (j==8000) pr_info("----Mac Starts---- \n");
-		
 	}
-	pr_info("-----Mac End-----\n");
+	end_time = ktime_get_ns();
+	my_time = end_time - start_time;
+	pr_info("My time =%llu ns\n", (my_time/iteration));
+
 	return 0;
 }
 
-static void __exit cryptomod_exit(void)
+static void __exit quickmod_exit(void)
 {
-	pr_info("Module removed.\n");
+	pr_info("Module removed:%s\n", __func__);
 }
 
-module_init(cryptomod_init);
-module_exit(cryptomod_exit);
+module_init(quickmod_init);
+module_exit(quickmod_exit);
 
 MODULE_LICENSE("GPL");
