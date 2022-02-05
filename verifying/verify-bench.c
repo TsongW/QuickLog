@@ -26,7 +26,7 @@ typedef __m128i block;
 typedef struct { __m128i rd_key[11]; } AES_KEY;
 
 const static unsigned char aeskey[16] = {0};
-static AES_KEY pk;
+static AES_KEY const_aeskey;
 //block current_key[16], next_key[16];
 int  ITERATIONS, len;
 
@@ -291,7 +291,7 @@ uint64_t verify_core( unsigned char *log_msg, const int *len,  const block *curr
 	nblks = (msg_len/112); 
 	remaining=(uint16_t)(msg_len%112);
 	counter =0;
-	sched = ((block *)(pk.rd_key)); //point to AES round keys	
+	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
  
 	mask =_mm_xor_si128(sched[0], *current_key);//xor the signing key with the aes public key
 	tag_blks[2] = _mm_loadu_si128(current_key);
@@ -377,7 +377,7 @@ uint64_t verify_core( unsigned char *log_msg, const int *len,  const block *curr
 **/
 static void crypto_int(void){
 
-	AES_128_Key_Expansion(aeskey,&pk); //expand aes round keys
+	AES_128_Key_Expansion(aeskey,&const_aeskey); //expand aes round keys
 }
 
 #undef gen_7_blks
@@ -402,7 +402,7 @@ int main(int argc, char* argv[]){
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
 	long long my_time;
-	block * sched_key = ((block *)(pk.rd_key)); //point to AES round keys
+	block * sched_key = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 	
 	if (argc >=2) len = atoi(argv[1]);
