@@ -3,6 +3,8 @@
 #include <string.h>   
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <x86intrin.h>
 #include <immintrin.h>
 #include <emmintrin.h>   
@@ -400,7 +402,7 @@ static int compare(const void* a, const void* b)
  
 unsigned long long median(size_t n, unsigned long long * x) {
     unsigned long long temp;
-    sort(x, n, sizeof(unsigned long long), &compare, NULL);
+    qsort(x, n, sizeof(unsigned long long), compare);
 
     if(n%2==0) {
         // if there is an even number of elements, return mean of the two elements in the middle
