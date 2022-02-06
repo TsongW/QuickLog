@@ -18,7 +18,9 @@
 static int len=256; //generating size
 module_param(len,int,S_IRUGO);  
 
-#define iteration 100000
+static int iteration=100000;
+module_param(iteration,int,S_IRUGO);  
+
 static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
@@ -314,7 +316,7 @@ static void cmpt_2_blks(block *cipher_blks, uint16_t counter, const unsigned cha
 **/
 static void quickmod_int(void)
 {
-	pr_info("Entering: %s\n", __func__);
+	//pr_info("Entering: %s\n", __func__);
 	unsigned char s_0[16];/* initial State */
 	block mask, init_pair[2];
 	block * sched;
@@ -329,6 +331,7 @@ static void quickmod_int(void)
 	current_state = xor_block(init_pair[0], *(block *)s_0);
 	current_key = xor_block(init_pair[1], *(block *)s_0);
 	kernel_fpu_end();
+	pr_info("Complete: %s\n", __func__);
 }
 
 /**  
@@ -340,6 +343,7 @@ static void quickmod_int(void)
 **/
 static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 {
+	pr_info("Entering: %s\n", __func__);
 	uint16_t j, remaining, counter;
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
@@ -488,7 +492,7 @@ static int __init quickmod_init(void)
 
 	for(j=0;j<times;j++)
 	{	
-		start_time = ktime_get_ns();
+		start_time = ktime_get_ns();//measure CLOCK_MONOTONIC
 		kernel_fpu_begin();
 		tag = mac_core(str,len);
 		kernel_fpu_end();
