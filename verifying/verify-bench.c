@@ -25,7 +25,8 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
 //block current_key[16], next_key[16];
-int  ITERATIONS, len;
+static int  ITERATIONS, len;
+static unsigned long long my_time[3200000];
 
 /********************************************************************/
 // AES Key Expansion
@@ -371,11 +372,10 @@ uint64_t verify_core( unsigned char *log_msg, const int *len,  const block *curr
 /** Initial:
 *** Expand AES round keys
 **/
-static void crypto_int(void){
+static void quickmod_int(void){
 
 	AES_128_Key_Expansion(aeskey,&const_aeskey); //expand aes round keys
 }
-
 #undef gen_7_blks
 #undef prernd_8
 #undef prernd_4
@@ -387,7 +387,30 @@ static void crypto_int(void){
 #undef AES_ECB_8
 #undef tag_blks_xor_8
 
+//****************median function*************************
+static int compare(const void* a, const void* b)
+{
+    unsigned long long arg1 = *(unsigned long long *)a;
+    unsigned long long  arg2 = *(unsigned long long *)b;
+ 
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+ 
+unsigned long long median(size_t n, unsigned long long * x) {
+    unsigned long long temp;
+    sort(x, n, sizeof(unsigned long long), &compare, NULL);
 
+    if(n%2==0) {
+        // if there is an even number of elements, return mean of the two elements in the middle
+        return ((x[n/2] + x[n/2 - 1]) / 2.0);
+    } else {
+        // else return the element in the middle
+        return  x[n/2];
+    }
+}
+//*****************************************************************
 
 
 int main(int argc, char* argv[]){
@@ -397,7 +420,7 @@ int main(int argc, char* argv[]){
 	block  current_key[16];
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
-	long long my_time;
+	unsigned long long my_med;
 	block * sched_key = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 	block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 	
@@ -436,12 +459,12 @@ int main(int argc, char* argv[]){
 
 	//initial log messages done-------
 
-	crypto_int();
+	quickmod_int();
 	sleep(0.5);
 
-	clock_gettime(id, &start);
-	for(i=0;i<ITERATIONS;i++){
 	
+	for(i=0;i<ITERATIONS;i++){
+		clock_gettime(id, &start);
 		/*Generating 8 signing keys*/
 		my_update(&current_key[0], &s_0,  sched_key);
 		my_update(&current_key[2], &current_key[0],  sched_key);
@@ -466,13 +489,15 @@ int main(int argc, char* argv[]){
 		for(j=0;j<8;j++){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}	
+		clock_gettime(id,&end);
+		my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 		
 	}
-	clock_gettime(id,&end);
 	
-	my_time = ( (long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 	
-	printf("My verification time = %lld ns, len =%d,  ITERATIONS=%d \n", ((long long) my_time/(ITERATIONS*8)), len, ITERATIONS);
+	
+	my_med =  median(ITERATIONS,  my_time);  
+	printf("My verification time = %lld ns, len =%d,  ITERATIONS=%d \n", ((unsigned long long) (my_med/8)), len, ITERATIONS);
 
 	return 0;
 
