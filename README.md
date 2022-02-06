@@ -17,7 +17,7 @@ signing cost of QuickLog, you need to create a kernel module as follows:
 
 - Go to the `signing` directory and run `make` to compile.
 - Run  `sudo dmesg --clear`
-- Load `quickmod` via `sudo insmod quickmod.ko` 
+- Load `quickmod` via `sudo insmod quickmod.ko [len=***]  [iteration=******]` 
 - Run`dmesg` command to check results.
 - Unload the kernel module using `sudo rmmod quickmod` when you are done.
 
