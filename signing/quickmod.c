@@ -22,6 +22,7 @@ typedef struct {block rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
 static AES_KEY const_aeskey;
 static block current_key, current_state;
+static unsigned long long my_time[1600000];
 
 /* Some helper functions */
 #define rnds 10 //AES rounds
@@ -440,6 +441,31 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 #undef prernd_4
 #undef AES_ECB_8
 
+//****************median function*************************
+static int compare(const void* a, const void* b)
+{
+    unsigned long long arg1 = *(unsigned long long *)a;
+    unsigned long long  arg2 = *(unsigned long long *)b;
+ 
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+ 
+unsigned long long median(size_t n, unsigned long long * x) {
+    unsigned long long temp;
+    sort(x, n, sizeof(unsigned long long), &compare, NULL);
+
+    if(n%2==0) {
+        // if there is an even number of elements, return mean of the two elements in the middle
+        return ((x[n/2] + x[n/2 - 1]) / 2.0);
+    } else {
+        // else return the element in the middle
+        return  x[n/2];
+    }
+}
+//*****************************************************************
+
 
 
 static int __init quickmod_init(void)
@@ -447,7 +473,7 @@ static int __init quickmod_init(void)
 	pr_info("Module started: %s\n",  __func__);
 
 	unsigned char str[8200]; 
-	unsigned long long start_time, end_time, my_time;
+	unsigned long long start_time, end_time, my_med;
     memset(str,'a',(8192));
     int j, times;
 	times = iteration+8000;
@@ -455,18 +481,19 @@ static int __init quickmod_init(void)
 	crypto_int();
 
 	msleep(10);
-	start_time = ktime_get_ns();
 
 	for(j=0;j<times;j++)
 	{	
+		start_time = ktime_get_ns();
 		kernel_fpu_begin();
 		tag = mac_core(str,len);
 		kernel_fpu_end();
-		
+		end_time = ktime_get_ns();
+		my_time[j] = end_time - start_time;
 	}
-	end_time = ktime_get_ns();
+
 	my_time = end_time - start_time;
-	pr_info("My time =%llu ns\n", (my_time/iteration));
+	pr_info("median time =%llu ns, size =%dB, iteration=%d \n", my_med, len, iteration);
 
 	return 0;
 }
