@@ -327,6 +327,8 @@ static void quickmod_int(void)
 	/*generating the first key-stae pair*/
 	sched = ((block *)(const_aeskey.rd_key));
 	mask = xor_block(sched[0], *(block *)s_0);/*xor the intial state with the aes fixed key*/
+	init_pair[0] = zero_block();/*0 for updatting state*/
+	init_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	AES_ECB_2(init_pair, sched, mask);
 	current_state = xor_block(init_pair[0], *(block *)s_0);
 	current_key = xor_block(init_pair[1], *(block *)s_0);
@@ -434,8 +436,8 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 		}
 		*out = tag_blks[2];
     }
-	next[0] = current_state;//0 xor ase_key xor current_state
-	next[1] = xor_block(sched[0], next[1]); //1 xor ase_key xor current_state
+	next[0] = zero_block();/*0 for updatting state*/
+	next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	mask =_mm_xor_si128(sched[0], current_state);
 	AES_ECB_2(next, sched, mask);
 	current_key = xor_block(next[0], current_state);

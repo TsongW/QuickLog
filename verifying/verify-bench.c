@@ -251,7 +251,7 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 **/
 
 /*Updating a key-sate pair using the current_state */
-void my_update(block * current_key, const block * current_state, const block *sched_key)
+void my_update(block * next_key, const block * current_state, const block *sched_key)
 {
 	block update_pair[2];
 	block mask = xor_block(sched_key[0], *current_state);
@@ -259,8 +259,8 @@ void my_update(block * current_key, const block * current_state, const block *sc
 	update_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	
 	AES_ECB_2(update_pair,sched_key, mask);
-	current_key[0] = xor_block(update_pair[0], *current_state);
-	current_key[1] = xor_block(update_pair[1], *current_state);
+	next_key[0] = xor_block(update_pair[0], *current_state);
+	next_key[1] = xor_block(update_pair[1], *current_state);
 }
 
 
