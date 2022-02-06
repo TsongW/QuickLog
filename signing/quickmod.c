@@ -343,7 +343,7 @@ static void quickmod_int(void)
 **/
 static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 {
-	pr_info("Entering: %s\n", __func__);
+	//pr_info("Entering: %s\n", __func__);
 	uint16_t j, remaining, counter;
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
