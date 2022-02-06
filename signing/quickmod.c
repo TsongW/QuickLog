@@ -8,13 +8,16 @@
 #include <linux/random.h>
 #include <linux/slab.h>
 #include <linux/sort.h>
+#include <linux/moduleparam.h>
 #include <asm/i387.h>
 #define  _MM_MALLOC_H_INCLUDED
 #include <x86intrin.h>
 #undef _MM_MALLOC_H_INCLUDED
 
 
-#define len  1024 //generating size
+static int len=256; //generating size
+module_param(len,int,S_IRUGO);  
+
 #define iteration 100000
 static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
