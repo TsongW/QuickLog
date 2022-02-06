@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <linux/random.h>
 #include <linux/slab.h>
+#include <linux/sort.h>
 #include <asm/i387.h>
 #define  _MM_MALLOC_H_INCLUDED
 #include <x86intrin.h>
@@ -492,7 +493,7 @@ static int __init quickmod_init(void)
 		my_time[j] = end_time - start_time;
 	}
 
-	my_time = end_time - start_time;
+	my_med =  median(iteration,  my_time);  
 	pr_info("median time =%llu ns, size =%dB, iteration=%d \n", my_med, len, iteration);
 
 	return 0;
