@@ -488,9 +488,9 @@ int main(int argc, char* argv[]){
 		vtag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
 
 		/*Verifying*/
-		for(j=0;j<8;j++){
+		/*for(j=0;j<8;j++){
 			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
-		}	
+		}*/	
 		clock_gettime(id,&end);
 		my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 		
