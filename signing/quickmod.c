@@ -312,7 +312,7 @@ static void cmpt_2_blks(block *cipher_blks, uint16_t counter, const unsigned cha
 *** Expand AES round keys
 *** Genreate first signing key and state pair 
 **/
-static void crypto_int(void)
+static void quickmod_int(void)
 {
 	pr_info("Entering: %s\n", __func__);
 	unsigned char s_0[16];/* initial State */
@@ -482,7 +482,7 @@ static int __init quickmod_init(void)
     int j, times;
 	times = iteration+8000;
 	__u64 tag;	
-	crypto_int();
+	quickmod_int();
 
 	msleep(10);
 
