@@ -499,7 +499,7 @@ int main(int argc, char* argv[]){
 	
 	
 	my_med =  median(ITERATIONS,  my_time);  
-	printf("My verification time = %lld ns, len =%d,  ITERATIONS=%d \n", ((unsigned long long) (my_med/8)), len, ITERATIONS);
+	printf("median verification time = %lld ns, len =%d,  ITERATIONS=%d \n", ((unsigned long long) (my_med/8)), len, ITERATIONS);
 
 	return 0;
 
