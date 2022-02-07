@@ -259,101 +259,6 @@ void my_update(block * next_pair,  const block * current_state, const block *sch
 	next_pair[1] = xor_block(update_pair[1], *current_state);
 }
 
-uint64_t mac_core( const unsigned char *log_msg, const int *len,  const block *current_key)
-{
-	uint16_t remaining, counter;
-	size_t msg_len = *len;
-	//tmp: used for padding the last block
-	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
-	block * sched;
-	block mask, cipher_blks[8], tag_blks[3];
-	union { uint64_t u64[2]; block bl; } out;
-
-	int nblks;
-	nblks = (msg_len/112); 
-	remaining=(uint16_t)(msg_len%112);
-	counter =0;
-	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
- 
-	mask =_mm_xor_si128(sched[0], *current_key);//xor the signing key with the aes public key
-	tag_blks[2] = _mm_loadu_si128(current_key);
-
-	if(nblks)//start 8 blocks parallel computing 
-	{
-		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
-		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-		gen_7_blks(cipher_blks,log_msg,counter);
-		AES_ECB_8(cipher_blks,sched, mask);
-		tag_blks_xor_8(tag_blks,cipher_blks);
-		counter +=8;
-		log_msg +=110;	
-		--nblks;
-		while(nblks){	
-			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
-			gen_7_blks(cipher_blks,log_msg,counter);
-			AES_ECB_8(cipher_blks,sched, mask);
-			tag_blks_xor_8(tag_blks,cipher_blks);
-			counter +=8;
-			log_msg +=110;
-			--nblks;
-		}
-	}//end of nblks
-	if (remaining){
-		if(remaining >=56){//4-block, 4*14=56 bytes log data
-			cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
-			tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
-			tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
-			remaining -= 56;
-			counter +=4;
-			log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
-		}
-		if (remaining >= 28) {//2-block, 2*14=28 bytes log data
-			if(counter){ 
-				cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
-			}else{//contains the first block
-				cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
-				cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-			}
-			cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
-			AES_ECB_2(cipher_blks,sched, mask);
-			tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
-			remaining -= 28;
-			counter +=2;
-			log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
-		}
-		if (remaining >= 14) {//1-block 14 bytes log data
-			if(counter){
-				tmp.bl = _mm_loadu_si128((block*)log_msg);//Not the first block
-			}else{//it is the first block
-				tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
-			}
-			tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
-			aes_single(cipher_blks, sched,mask);
-			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
-			remaining -= 14;
-			counter +=1;
-			log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
-		}
-		if (remaining){//last block + generating new key
-			if (counter)  log_msg +=2;
-			counter +=(14-remaining);
-			tmp.bl = zero_block();
-			tmp.u16[0]= counter;
-			while(remaining--){
-				tmp.u8[remaining+1]=log_msg[remaining-1];
-			}
-			tmp.bl = xor_block(tmp.bl, mask);
-			aes_single(cipher_blks, sched, mask);
-			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
-			
-		}
-    }
-	out.bl = _mm_loadu_si128((block*)&tag_blks[2]);
-	return out.u64[0];
-}
-
-
-
 
 /**  
 * Input @log_msg: a log data, 
@@ -468,13 +373,6 @@ static void quickmod_int(void){
 	AES_128_Key_Expansion(aeskey,&const_aeskey); //expand aes round keys
 	sched_key = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 	my_update(&signing_pair[0], &s_0,  sched_key);
-	my_update(&signing_pair[2], &signing_pair[0],  sched_key);
-	my_update(&signing_pair[4], &signing_pair[2],  sched_key);
-	my_update(&signing_pair[6], &signing_pair[4],  sched_key);
-	my_update(&signing_pair[8], &signing_pair[6],  sched_key);
-	my_update(&signing_pair[10], &signing_pair[8], sched_key);
-	my_update(&signing_pair[12], &signing_pair[10],sched_key);
-	my_update(&signing_pair[14], &signing_pair[12],sched_key);
 }
 
 #undef gen_7_blks
@@ -518,7 +416,7 @@ int main(int argc, char* argv[]){
 	
 	int i,j;
 	uint64_t tag[8], vtag[8];
-	block  current_key[16];
+	block  current_pair[16];
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
 	unsigned long long my_med;
@@ -545,23 +443,6 @@ int main(int argc, char* argv[]){
 	memset(str5,'f',(len));
 	memset(str6,'g',(len));
 	memset(str7,'h',(len));
-	my_update(&current_key[0], &s_0,  sched_key);
-	my_update(&current_key[2], &current_key[0],  sched_key);
-	my_update(&current_key[4], &current_key[2],  sched_key);
-	my_update(&current_key[6], &current_key[4],  sched_key);
-	my_update(&current_key[8], &current_key[6],  sched_key);
-	my_update(&current_key[10], &current_key[8], sched_key);
-	my_update(&current_key[12], &current_key[10],sched_key);
-	my_update(&current_key[14], &current_key[12],sched_key);
-	tag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
-	tag[1]=verify_core((unsigned char*)str1, &len, &current_key[3]);
-	tag[2]=verify_core((unsigned char*)str2, &len, &current_key[5]);
-	tag[3]=verify_core((unsigned char*)str3, &len, &current_key[7]);
-	tag[4]=verify_core((unsigned char*)str4, &len, &current_key[9]);
-	tag[5]=verify_core((unsigned char*)str5, &len, &current_key[11]);
-	tag[6]=verify_core((unsigned char*)str6, &len, &current_key[13]);
-	tag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
-	//initial log messages done-------
 
 	quickmod_int();
 	sleep(0.5);
@@ -570,29 +451,29 @@ int main(int argc, char* argv[]){
 	for(i=0;i<ITERATIONS;i++){
 		clock_gettime(id, &start);
 		/*Generating 8 signing keys*/
-		my_update(&current_key[0], &s_0,  sched_key);
-		my_update(&current_key[2], &current_key[0],  sched_key);
-		my_update(&current_key[4], &current_key[2],  sched_key);
-		my_update(&current_key[6], &current_key[4],  sched_key);
-		my_update(&current_key[8], &current_key[6],  sched_key);
-		my_update(&current_key[10], &current_key[8], sched_key);
-		my_update(&current_key[12], &current_key[10],sched_key);
-		my_update(&current_key[14], &current_key[12],sched_key);
+		my_update(&current_pair[0], &s_0,  sched_key);
+		my_update(&current_pair[2], &current_pair[0],  sched_key);
+		my_update(&current_pair[4], &current_pair[2],  sched_key);
+		my_update(&current_pair[6], &current_pair[4],  sched_key);
+		my_update(&current_pair[8], &current_pair[6],  sched_key);
+		my_update(&current_pair[10], &current_pair[8], sched_key);
+		my_update(&current_pair[12], &current_pair[10],sched_key);
+		my_update(&current_pair[14], &current_pair[12],sched_key);
 
 		/*Computing 8 messages*/
-		vtag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
-		vtag[1]=verify_core((unsigned char*)str1, &len, &current_key[3]);
-		vtag[2]=verify_core((unsigned char*)str2, &len, &current_key[5]);
-		vtag[3]=verify_core((unsigned char*)str3, &len, &current_key[7]);
-		vtag[4]=verify_core((unsigned char*)str4, &len, &current_key[9]);
-		vtag[5]=verify_core((unsigned char*)str5, &len, &current_key[11]);
-		vtag[6]=verify_core((unsigned char*)str6, &len, &current_key[13]);
-		vtag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
+		vtag[0]=verify_core((unsigned char*)str, &len, &current_pair[1]);
+		vtag[1]=verify_core((unsigned char*)str1, &len, &current_pair[3]);
+		vtag[2]=verify_core((unsigned char*)str2, &len, &current_pair[5]);
+		vtag[3]=verify_core((unsigned char*)str3, &len, &current_pair[7]);
+		vtag[4]=verify_core((unsigned char*)str4, &len, &current_pair[9]);
+		vtag[5]=verify_core((unsigned char*)str5, &len, &current_pair[11]);
+		vtag[6]=verify_core((unsigned char*)str6, &len, &current_pair[13]);
+		vtag[7]=verify_core((unsigned char*)str7, &len, &current_pair[15]);
 
 		/*Verifying*/
-		for(j=1;j<8;j++){
+		/*for(j=1;j<8;j++){
 			if(tag[j]!=vtag[j] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
-		}
+		}*/
 		clock_gettime(id,&end);
 		my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 		
