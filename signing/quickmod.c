@@ -18,17 +18,16 @@
 static int len=256; //generating size
 module_param(len,int,S_IRUGO);  
 
-static int iteration=100000;
-module_param(iteration,int,S_IRUGO);  
+#define iteration 100000
 
 static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
 
-const static unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
+const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
 static block current_key, current_state;
-static unsigned long long my_time[1600000];
+static unsigned long long my_time[160000];
 
 /* Some helper functions */
 #define rnds 10 //AES rounds

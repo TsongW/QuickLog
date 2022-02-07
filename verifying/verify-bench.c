@@ -20,6 +20,7 @@
 #endif
 
 /* Some helper functions */
+#define ITERATIONS 100000
 #define rnds 10 //AES rounds
 typedef __m128i block;
 typedef struct { __m128i rd_key[11]; } AES_KEY;
@@ -27,8 +28,8 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
 //block current_key[16], next_key[16];
-static int  ITERATIONS, len;
-static unsigned long long my_time[3200000];
+static int  len;
+static unsigned long long my_time[160000];
 
 /********************************************************************/
 // AES Key Expansion
@@ -428,10 +429,6 @@ int main(int argc, char* argv[]){
 	
 	if (argc >=2) len = atoi(argv[1]);
     else len = 256;
-    if (argc >= 3) 
-	ITERATIONS = atoi(argv[2]); 
-    else ITERATIONS = 100000;
-
 
 	//initial log messages------------
 	char str[4112];
