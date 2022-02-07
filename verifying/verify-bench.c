@@ -28,7 +28,7 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
 static block signing_pair[16];
-static block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
+static block s_0;/* initial State */
 static int  len;
 static unsigned long long my_time[160000];
 
@@ -247,7 +247,7 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 //*********************** end of help functions *************************************
 
 /*Updating a key-sate pair using the current_state */
-void my_update(block * next_pair,  block * current_state, const block *sched_key)
+void my_update(block * next_pair,  const block * current_state, const block *sched_key)
 {
 	block update_pair[2];
 	block mask = xor_block(sched_key[0], *current_state);
@@ -464,6 +464,7 @@ uint64_t verify_core( const unsigned char *log_msg, const int *len,  const block
 ***/
 static void quickmod_int(void){
 	block * sched_key;
+	s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);
 	AES_128_Key_Expansion(aeskey,&const_aeskey); //expand aes round keys
 	sched_key = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 	my_update(&signing_pair[0], &s_0,  sched_key);
