@@ -247,7 +247,7 @@ static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_ms
 //*********************** end of help functions *************************************
 
 /*Updating a key-sate pair using the current_state */
-void my_update(block * next_pair, const block * current_state, const block *sched_key)
+void my_update(block * next_pair,  block * current_state, const block *sched_key)
 {
 	block update_pair[2];
 	block mask = xor_block(sched_key[0], *current_state);
