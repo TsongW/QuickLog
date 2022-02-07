@@ -493,7 +493,7 @@ static int __init quickmod_init(void)
 
 	for(j=0;j<times;j++)
 	{	
-		start_time = ktime_get_ns();//measure CLOCK_MONOTONIC
+		start_time = ktime_get_ns();//CLOCK_MONOTONIC
 		kernel_fpu_begin();
 		tag = mac_core(str,len);
 		kernel_fpu_end();
@@ -502,7 +502,7 @@ static int __init quickmod_init(void)
 	}
 
 	my_med =  median(iteration,  my_time);  
-	pr_info("median time =%llu ns, size =%dB, iteration=%d \n", my_med, len, iteration);
+	pr_info("median time =%llu ns, message size =%d B \n", my_med, len);
 
 	return 0;
 }
