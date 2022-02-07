@@ -590,7 +590,7 @@ int main(int argc, char* argv[]){
 		vtag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
 
 		/*Verifying*/
-		for(j=0;j<8;j++){
+		for(j=1;j<8;j++){
 			if(tag[j]!=vtag[j] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
 		clock_gettime(id,&end);
