@@ -415,7 +415,7 @@ unsigned long long median(size_t n, unsigned long long * x) {
 int main(int argc, char* argv[]){
 	
 	int i,j;
-	uint64_t tag[8], vtag[8];
+	uint64_t  vtag[8];
 	block  current_pair[16];
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
@@ -470,10 +470,6 @@ int main(int argc, char* argv[]){
 		vtag[6]=verify_core((unsigned char*)str6, &len, &current_pair[13]);
 		vtag[7]=verify_core((unsigned char*)str7, &len, &current_pair[15]);
 
-		/*Verifying*/
-		/*for(j=1;j<8;j++){
-			if(tag[j]!=vtag[j] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
-		}*/
 		clock_gettime(id,&end);
 		my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
 		
