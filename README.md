@@ -17,7 +17,7 @@ signing cost of QuickLog, you need to create a kernel module as follows:
 
 - Go to the `signing` directory and run `make` to compile.
 - Run  `sudo dmesg --clear`
-- Load `quickmod` via `sudo insmod quickmod.ko [len=***]  [iteration=******]` 
+- Load `quickmod` via `sudo insmod quickmod.ko len=[message length]` 
 - Run`dmesg` command to check results.
 - Unload the kernel module using `sudo rmmod quickmod` when you are done.
 
@@ -25,5 +25,5 @@ signing cost of QuickLog, you need to create a kernel module as follows:
 Verification can be run from the user space. To measure the verification cost,
 
 - Go to the `verifying` directory and run `make` to compile.
-- Run`./verify [data length]  [iteration]`.
+- Run `./verify [data length]`.
 - Run `make clean` when you are done.
