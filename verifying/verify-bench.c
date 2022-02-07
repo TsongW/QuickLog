@@ -20,7 +20,7 @@
 #endif
 
 /* Some helper functions */
-#define ITERATIONS 1//100000
+#define ITERATIONS 5//100000
 #define rnds 10 //AES rounds
 typedef __m128i block;
 typedef struct { __m128i rd_key[11]; } AES_KEY;
