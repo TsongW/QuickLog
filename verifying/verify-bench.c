@@ -28,7 +28,7 @@ typedef struct { __m128i rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
 static block signing_pair[16];
-const static block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
+static block s_0 = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/* initial State */
 static int  len;
 static unsigned long long my_time[160000];
 
