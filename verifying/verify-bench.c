@@ -545,15 +545,22 @@ int main(int argc, char* argv[]){
 	memset(str5,'f',(len));
 	memset(str6,'g',(len));
 	memset(str7,'h',(len));
-	tag[0]= mac_core((unsigned char*)str, &len, &signing_pair[1]);
-	tag[1]= mac_core((unsigned char*)str1, &len, &signing_pair[3]);
-	tag[2]= mac_core((unsigned char*)str2, &len, &signing_pair[5]);
-	tag[3]= mac_core((unsigned char*)str3, &len, &signing_pair[7]);
-	tag[4]= mac_core((unsigned char*)str4, &len, &signing_pair[9]);
-	tag[5]= mac_core((unsigned char*)str5, &len, &signing_pair[11]);
-	tag[6]= mac_core((unsigned char*)str6, &len, &signing_pair[13]);
-	tag[7]= mac_core((unsigned char*)str7, &len, &signing_pair[15]);
-
+	my_update(&current_key[0], &s_0,  sched_key);
+	my_update(&current_key[2], &current_key[0],  sched_key);
+	my_update(&current_key[4], &current_key[2],  sched_key);
+	my_update(&current_key[6], &current_key[4],  sched_key);
+	my_update(&current_key[8], &current_key[6],  sched_key);
+	my_update(&current_key[10], &current_key[8], sched_key);
+	my_update(&current_key[12], &current_key[10],sched_key);
+	my_update(&current_key[14], &current_key[12],sched_key);
+	tag[0]=verify_core((unsigned char*)str, &len, &current_key[1]);
+	tag[1]=verify_core((unsigned char*)str1, &len, &current_key[3]);
+	tag[2]=verify_core((unsigned char*)str2, &len, &current_key[5]);
+	tag[3]=verify_core((unsigned char*)str3, &len, &current_key[7]);
+	tag[4]=verify_core((unsigned char*)str4, &len, &current_key[9]);
+	tag[5]=verify_core((unsigned char*)str5, &len, &current_key[11]);
+	tag[6]=verify_core((unsigned char*)str6, &len, &current_key[13]);
+	tag[7]=verify_core((unsigned char*)str7, &len, &current_key[15]);
 	//initial log messages done-------
 
 	quickmod_int();
@@ -584,7 +591,7 @@ int main(int argc, char* argv[]){
 
 		/*Verifying*/
 		for(j=0;j<8;j++){
-			if(tag[0]!=vtag[0] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
+			if(tag[j]!=vtag[j] ) {printf("Detect no match for tag=%lld\n", ITERATIONS+j);break;}
 		}
 		clock_gettime(id,&end);
 		my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
