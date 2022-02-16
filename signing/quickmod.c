@@ -352,9 +352,9 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
 	__u64 proof[2];
-	int nblks;
-	nblks = (msg_len/112); 
-	remaining=(uint16_t)(msg_len%112);
+	//int nblks;
+	//nblks = (msg_len/112); 
+	remaining=(uint16_t)(msg_len);
 	counter =0;
 	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
 	out = ((block *)(proof));
@@ -363,7 +363,7 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	mask =_mm_xor_si128(sched[0], current_key);
 	tag_blks[2] = _mm_loadu_si128(&current_key);
 
-	if(nblks)//start 8 blocks parallel computing 
+	if(remaining>=112)//start 8 blocks parallel computing 
 	{
 		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
 		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
@@ -372,8 +372,8 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 		tag_8_xor(tag_blks,cipher_blks);
 		counter +=8;
 		log_msg +=110;	
-		--nblks;
-		while(nblks){	
+		remaining -=112;
+		while(remaining>=112)){	
 			//cmpt_8_blks(cipher_blks, counter, log_msg, sched, mask);
 			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
 			gen_7_blks(cipher_blks,log_msg,counter);
@@ -381,7 +381,7 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tag_8_xor(tag_blks,cipher_blks);
 			counter +=8;
 			log_msg +=110;
-			--nblks;
+			remaining -=112;
 		}
 	}//end of nblks
 	if (remaining){
