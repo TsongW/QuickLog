@@ -431,8 +431,12 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tmp.u16[0]= counter;
 			memcpy(&tmp.u8[2], log_msg, remaining);
 			cipher_blks[0] = xor_block(tmp.bl, mask);
-			aes_single(tmp.bl, sched);
-			/*AES Preround */	
+			cipher_blks[1] = xor_block(current_state, sched[0]);
+			cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));
+			//AES_ECB_3(cipher_blks, sched);
+			tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
+			current_key = xor_block(cipher_blks[2], current_state);
+			current_state = xor_block(cipher_blks[1], current_state);	
 	}else{
 	next[0] = zero_block();/*0 for updatting state*/
 	next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
