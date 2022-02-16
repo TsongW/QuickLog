@@ -342,7 +342,7 @@ static void quickmod_int(void)
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: a 64-byte tag
 **/
-static  void  mac_core(unsigned char *log_msg, size_t msg_len)
+static  __u64  mac_core(unsigned char *log_msg, size_t msg_len)
 {
 	//pr_info("Entering: %s\n", __func__);
 	uint16_t j, remaining, counter;
@@ -352,8 +352,7 @@ static  void  mac_core(unsigned char *log_msg, size_t msg_len)
 	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
 	__u64 proof[2];
-	//int nblks;
-	//nblks = (msg_len/112); 
+
 	remaining=(uint16_t)(msg_len);
 	counter =0;
 	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
@@ -434,7 +433,7 @@ static  void  mac_core(unsigned char *log_msg, size_t msg_len)
 			aes_single(tmp.bl, sched);
 			/*AES Preround */	
 		}
-		//*out = tag_blks[2];
+		*out = tag_blks[2];
     }
 	next[0] = zero_block();/*0 for updatting state*/
 	next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
@@ -443,7 +442,7 @@ static  void  mac_core(unsigned char *log_msg, size_t msg_len)
 	current_key = xor_block(next[0], current_state);
 	current_state = xor_block(next[1], current_state);
 	kernel_fpu_end();
-	//return proof[0];
+	return proof[0];
 }
 
 #undef gen_7_blks
@@ -496,8 +495,7 @@ static int __init quickmod_init(void)
 	{	
 		start_time = ktime_get_ns();//CLOCK_MONOTONIC
 		//kernel_fpu_begin();
-		//tag = mac_core(str,len);
-		mac_core(str,len);
+		tag = mac_core(str,len);
 		//kernel_fpu_end();
 		end_time = ktime_get_ns();
 		my_time[j] = end_time - start_time;
