@@ -373,7 +373,7 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 		counter +=8;
 		log_msg +=110;	
 		remaining -=112;
-		while(remaining>=112)){	
+		while(remaining>=112){	
 			//cmpt_8_blks(cipher_blks, counter, log_msg, sched, mask);
 			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
 			gen_7_blks(cipher_blks,log_msg,counter);
