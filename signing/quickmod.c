@@ -377,9 +377,9 @@ static  void  mac_core(unsigned char *log_msg, size_t msg_len)
 {
 	//pr_info("Entering: %s\n", __func__);
 	uint16_t j, remaining, counter;
-	//tmp: used for padding the last block
-	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
-	block * sched, *out;
+	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;//padding the last block
+	register block * sched;
+	block *out;
 	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
 	__u64 proof[2];
@@ -457,10 +457,10 @@ static  void  mac_core(unsigned char *log_msg, size_t msg_len)
 	if (remaining){//last block + generating new key
 		if (counter)  log_msg +=2;
 		counter += (14-remaining);
-		* pad_zeros = zero_block();
-		* pad_header = counter;
-		memcpy(&my_pad[2], log_msg, remaining);
-		cipher_blks[0] = xor_block( mask, *(block*)my_pad);
+		tmp.bl = zero_block();
+		tmp.u16[0] = counter;
+		memcpy((tmp.u8+2), log_msg, remaining);
+		cipher_blks[0] = xor_block( mask, tmp.bl);
 		cipher_blks[1] = xor_block(current_state, sched[0]);
 		cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));
 		AES_ECB_3(cipher_blks, sched);
