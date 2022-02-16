@@ -173,16 +173,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], key); \
   	}while(0)
 
-
-#define enc_3(cipher_blks, key)                                 \
-	do{                                                         \
-		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
-		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], key); \
-		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], key); \
-  	}while(0)
-
-
-
 #define enc_2(cipher_blks, key)                                 \
 	do{                                                         \
 		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
@@ -224,27 +214,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
 		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
 	}while (0)
-
-
-
-
-#define AES_ECB_3(cipher_blks, sched)    \
-	do{                                  \
-		enc_3(cipher_blks, sched[1]);              \
-		enc_3(cipher_blks, sched[2]);              \
-		enc_3(cipher_blks, sched[3]);              \
-		enc_3(cipher_blks, sched[4]);              \
-		enc_3(cipher_blks, sched[5]);              \
-		enc_3(cipher_blks, sched[6]);              \
-		enc_3(cipher_blks, sched[7]);              \
-		enc_3(cipher_blks, sched[8]);              \
-		enc_3(cipher_blks, sched[9]);              \
-		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
-		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-		cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-	}while (0)
-
-
 
 
 #define AES_ECB_4(cipher_blks, sched, sign_keys)   \
@@ -373,13 +342,13 @@ static void quickmod_int(void)
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 * Output: a 64-byte tag
 **/
-static  void  mac_core(unsigned char *log_msg, size_t msg_len)
+static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 {
 	//pr_info("Entering: %s\n", __func__);
 	uint16_t j, remaining, counter;
-	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;//padding the last block
-	register block * sched;
-	block *out;
+	//tmp: used for padding the last block
+	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
+	block * sched, *out;
 	block mask, cipher_blks[8], tag_blks[3];
 	block next[2];
 	__u64 proof[2];
@@ -454,29 +423,27 @@ static  void  mac_core(unsigned char *log_msg, size_t msg_len)
 			counter +=1;
 			log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
 		}
-	if (remaining){//last block + generating new key
-		if (counter)  log_msg +=2;
-		counter += (14-remaining);
-		tmp.bl = zero_block();
-		tmp.u16[0] = counter;
-		memcpy((tmp.u8+2), log_msg, remaining);
-		cipher_blks[0] = xor_block( mask, tmp.bl);
-		cipher_blks[1] = xor_block(current_state, sched[0]);
-		cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));
-		AES_ECB_3(cipher_blks, sched);
-		tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
-		current_key = xor_block(cipher_blks[2], current_state);
-		current_state = xor_block(cipher_blks[1], current_state);
-	}else{
-		next[0] = zero_block();/*0 for updatting state*/
-		next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
-		mask =_mm_xor_si128(sched[0], current_state);
-		AES_ECB_2(next, sched, mask);
-		current_key = xor_block(next[1], current_state);
-		current_state = xor_block(next[0], current_state);
-	}
+		if (remaining){//last block + generating new key
+			if (counter)  log_msg +=2;
+			counter +=(14-remaining);
+			tmp.bl = zero_block();
+			tmp.u16[0]= counter;
+			memcpy(&tmp.u8[2], log_msg, remaining);
+			//AES_single(&tmp.bl, sched);
+			tmp.bl = xor_block(tmp.bl, mask);
+			aes_single(tmp.bl, sched);
+			/*AES Preround */	
+		}
+		*out = tag_blks[2];
+    }
+	next[0] = zero_block();/*0 for updatting state*/
+	next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
+	mask =_mm_xor_si128(sched[0], current_state);
+	AES_ECB_2(next, sched, mask);
+	current_key = xor_block(next[0], current_state);
+	current_state = xor_block(next[1], current_state);
 	kernel_fpu_end();
-	//return proof[0];
+	return proof[0];
 }
 
 #undef gen_7_blks
@@ -529,8 +496,7 @@ static int __init quickmod_init(void)
 	{	
 		start_time = ktime_get_ns();//CLOCK_MONOTONIC
 		//kernel_fpu_begin();
-		//tag = mac_core(str,len);
-		mac_core(str,len);
+		tag = mac_core(str,len);
 		//kernel_fpu_end();
 		end_time = ktime_get_ns();
 		my_time[j] = end_time - start_time;
