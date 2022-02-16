@@ -173,6 +173,16 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], key); \
   	}while(0)
 
+
+
+#define enc_3(cipher_blks, key)                                 \
+	do{                                                         \
+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
+		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], key); \
+		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], key); \
+  	}while(0)
+
+
 #define enc_2(cipher_blks, key)                                 \
 	do{                                                         \
 		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
@@ -214,6 +224,25 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
 		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
 	}while (0)
+
+
+
+#define AES_ECB_3(cipher_blks, sched)    \
+	do{                                  \
+		enc_3(cipher_blks, sched[1]);              \
+		enc_3(cipher_blks, sched[2]);              \
+		enc_3(cipher_blks, sched[3]);              \
+		enc_3(cipher_blks, sched[4]);              \
+		enc_3(cipher_blks, sched[5]);              \
+		enc_3(cipher_blks, sched[6]);              \
+		enc_3(cipher_blks, sched[7]);              \
+		enc_3(cipher_blks, sched[8]);              \
+		enc_3(cipher_blks, sched[9]);              \
+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
+		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
+		cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
+	}while (0)
+
 
 
 #define AES_ECB_4(cipher_blks, sched, sign_keys)   \
@@ -433,7 +462,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			cipher_blks[0] = xor_block(tmp.bl, mask);
 			cipher_blks[1] = xor_block(current_state, sched[0]);
 			cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));
-			//AES_ECB_3(cipher_blks, sched);
+			AES_ECB_3(cipher_blks, sched);
 			tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
 			current_key = xor_block(cipher_blks[2], current_state);
 			current_state = xor_block(cipher_blks[1], current_state);	
