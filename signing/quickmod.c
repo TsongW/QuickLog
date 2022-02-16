@@ -358,9 +358,10 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	counter =0;
 	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
 	out = ((block *)(proof));
+	kernel_fpu_begin();
 	//xor the signing key with the aes fixed key
 	mask =_mm_xor_si128(sched[0], current_key);
-	tag_blks[2] = current_key;
+	tag_blks[2] = _mm_loadu_si128(&current_key);
 
 	if(nblks)//start 8 blocks parallel computing 
 	{
@@ -441,7 +442,7 @@ static inline __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	AES_ECB_2(next, sched, mask);
 	current_key = xor_block(next[0], current_state);
 	current_state = xor_block(next[1], current_state);
-	//kernel_fpu_end();
+	kernel_fpu_end();
 	return proof[0];
 }
 
@@ -494,9 +495,9 @@ static int __init quickmod_init(void)
 	for(j=0;j<times;j++)
 	{	
 		start_time = ktime_get_ns();//CLOCK_MONOTONIC
-		kernel_fpu_begin();
+		//kernel_fpu_begin();
 		tag = mac_core(str,len);
-		kernel_fpu_end();
+		//kernel_fpu_end();
 		end_time = ktime_get_ns();
 		my_time[j] = end_time - start_time;
 	}
