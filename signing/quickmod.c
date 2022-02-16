@@ -422,6 +422,7 @@ static  __u64  mac_core(unsigned char *log_msg, size_t msg_len)
 			counter +=1;
 			log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
 		}
+		#if 0
 		if (remaining){//last block + generating new key
 			if (counter)  log_msg +=2;
 			counter +=(14-remaining);
@@ -441,6 +442,7 @@ static  __u64  mac_core(unsigned char *log_msg, size_t msg_len)
 	AES_ECB_2(next, sched, mask);
 	current_key = xor_block(next[0], current_state);
 	current_state = xor_block(next[1], current_state);
+	#endif
 	kernel_fpu_end();
 	return proof[0];
 }
