@@ -27,7 +27,7 @@ typedef struct {block rd_key[11]; } AES_KEY;
 const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
 static block current_key, current_state;
-static unsigned long long my_time[160000];
+static unsigned long long my_time[640000];
 
 /* Some helper functions */
 #define rnds 10 //AES rounds
