@@ -274,7 +274,7 @@ uint64_t verify_core( const unsigned char *log_msg, const int *len,  const block
 	size_t msg_len = *len;
 	//tmp: used for padding the last block
 	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
-	block * sched;
+	register block * sched =((block *)(const_aeskey.rd_key)); //point to AES round keys	;
 	block mask, cipher_blks[8], tag_blks[3];
 	union { uint64_t u64[2]; block bl; } out;
 
@@ -282,7 +282,7 @@ uint64_t verify_core( const unsigned char *log_msg, const int *len,  const block
 	//nblks = (msg_len/112); 
 	remaining=(uint16_t)(*len);
 	counter =0;
-	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
+	
  
 	mask =_mm_xor_si128(sched[0], *current_key);//xor the signing key with the aes public key
 	tag_blks[2] = _mm_loadu_si128(current_key);
@@ -353,8 +353,7 @@ uint64_t verify_core( const unsigned char *log_msg, const int *len,  const block
 		}
 		tmp.bl = xor_block(tmp.bl, mask);
 		aes_single(cipher_blks, sched, mask);
-		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
-		
+		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);	
 	}
     
 	out.bl = _mm_loadu_si128((block*)&tag_blks[2]);
