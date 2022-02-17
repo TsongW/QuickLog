@@ -278,16 +278,16 @@ uint64_t verify_core( const unsigned char *log_msg, const int *len,  const block
 	block mask, cipher_blks[8], tag_blks[3];
 	union { uint64_t u64[2]; block bl; } out;
 
-	int nblks;
-	nblks = (msg_len/112); 
-	remaining=(uint16_t)(msg_len%112);
+	//int nblks;
+	//nblks = (msg_len/112); 
+	remaining=(uint16_t)(*len);
 	counter =0;
 	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
  
 	mask =_mm_xor_si128(sched[0], *current_key);//xor the signing key with the aes public key
 	tag_blks[2] = _mm_loadu_si128(current_key);
 
-	if(nblks)//start 8 blocks parallel computing 
+	if(remaining>=112)//start 8 blocks parallel computing 
 	{
 		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
 		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
@@ -296,67 +296,67 @@ uint64_t verify_core( const unsigned char *log_msg, const int *len,  const block
 		tag_blks_xor_8(tag_blks,cipher_blks);
 		counter +=8;
 		log_msg +=110;	
-		--nblks;
-		while(nblks){	
+		remaining -=112;
+		while(remaining>=112){	
 			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
 			gen_7_blks(cipher_blks,log_msg,counter);
 			AES_ECB_8(cipher_blks,sched, mask);
 			tag_blks_xor_8(tag_blks,cipher_blks);
 			counter +=8;
 			log_msg +=110;
-			--nblks;
+			remaining -=112;
 		}
 	}//end of nblks
-	if (remaining){
-		if(remaining >=56){//4-block, 4*14=56 bytes log data
-			cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
-			tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
-			tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
-			remaining -= 56;
-			counter +=4;
-			log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
+
+	if(remaining >=56){//4-block, 4*14=56 bytes log data
+		cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
+		tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
+		tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
+		remaining -= 56;
+		counter +=4;
+		log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining >= 28) {//2-block, 2*14=28 bytes log data
+		if(counter){ 
+			cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
+		}else{//contains the first block
+			cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
+			cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
 		}
-		if (remaining >= 28) {//2-block, 2*14=28 bytes log data
-			if(counter){ 
-				cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
-			}else{//contains the first block
-				cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
-				cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-			}
-			cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
-			AES_ECB_2(cipher_blks,sched, mask);
-			tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
-			remaining -= 28;
-			counter +=2;
-			log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
+		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
+		AES_ECB_2(cipher_blks,sched, mask);
+		tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
+		remaining -= 28;
+		counter +=2;
+		log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining >= 14) {//1-block 14 bytes log data
+		if(counter){
+			tmp.bl = _mm_loadu_si128((block*)log_msg);//Not the first block
+		}else{//it is the first block
+			tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
 		}
-		if (remaining >= 14) {//1-block 14 bytes log data
-			if(counter){
-				tmp.bl = _mm_loadu_si128((block*)log_msg);//Not the first block
-			}else{//it is the first block
-				tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
-			}
-			tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
-			aes_single(cipher_blks, sched,mask);
-			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
-			remaining -= 14;
-			counter +=1;
-			log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
+		tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
+		aes_single(cipher_blks, sched,mask);
+		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
+		remaining -= 14;
+		counter +=1;
+		log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining){//last block + generating new key
+		if (counter)  log_msg +=2;
+		counter +=(14-remaining);
+		tmp.bl = zero_block();
+		tmp.u16[0]= counter;
+		while(remaining--){
+			tmp.u8[remaining+1]=log_msg[remaining-1];
 		}
-		if (remaining){//last block + generating new key
-			if (counter)  log_msg +=2;
-			counter +=(14-remaining);
-			tmp.bl = zero_block();
-			tmp.u16[0]= counter;
-			while(remaining--){
-				tmp.u8[remaining+1]=log_msg[remaining-1];
-			}
-			tmp.bl = xor_block(tmp.bl, mask);
-			aes_single(cipher_blks, sched, mask);
-			tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
-			
-		}
-    }
+		tmp.bl = xor_block(tmp.bl, mask);
+		aes_single(cipher_blks, sched, mask);
+		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
+		
+	}
+    
 	out.bl = _mm_loadu_si128((block*)&tag_blks[2]);
 	return out.u64[0];
 }
