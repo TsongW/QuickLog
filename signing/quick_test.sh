@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-make clean && make
+#make clean && make
 
 sudo dmesg --clear
 sudo insmod quickmod.ko
