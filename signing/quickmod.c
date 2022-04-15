@@ -20,7 +20,7 @@ module_param(len,int,S_IRUGO);
 
 #define iteration 100000
 
-static DEFINE_SPINLOCK(lock_set_logging);
+//static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
 typedef struct {block rd_key[11]; } AES_KEY;
 
