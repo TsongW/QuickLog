@@ -4,35 +4,35 @@
 #make clean && make
 
 sudo dmesg --clear
-sudo insmod quickmod.ko len=64
+sudo insmod quickmod.ko 
 dmesg
 sudo rmmod quickmod
 
 
 sudo dmesg --clear
-sudo insmod quickmod.ko len=128
+sudo insmod quickmod.ko 
 dmesg
 sudo rmmod quickmod
 
 sudo dmesg --clear
-sudo insmod quickmod.ko len=256
+sudo insmod quickmod.ko 
 dmesg
 sudo rmmod quickmod
 
 sudo dmesg --clear
-sudo insmod quickmod.ko len=320
-dmesg
-sudo rmmod quickmod
-
-
-sudo dmesg --clear
-sudo insmod quickmod.ko len=512
+sudo insmod quickmod.ko 
 dmesg
 sudo rmmod quickmod
 
 
 sudo dmesg --clear
-sudo insmod quickmod.ko len=1024
+sudo insmod quickmod.ko 
+dmesg
+sudo rmmod quickmod
+
+
+sudo dmesg --clear
+sudo insmod quickmod.ko 
 dmesg
 sudo rmmod quickmod
 

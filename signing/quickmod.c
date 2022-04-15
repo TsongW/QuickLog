@@ -18,7 +18,7 @@
 static int len=256; //generating size
 module_param(len,int,S_IRUGO);  
 
-#define iteration 200000
+#define iteration 100000
 
 //static DEFINE_SPINLOCK(lock_set_logging);
 typedef __m128i block;
