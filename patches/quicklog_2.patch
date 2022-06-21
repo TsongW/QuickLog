@@ -415,7 +415,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +		current_state = xor_block(cipher_blks[0], current_state);
 +	}
 +#endif
-+	my_tag = xor_block(tag_blks[2], * pad_zeros );
++	my_tag = xor_block(tag_blks[2], my_tag );
 +	
 +}
 +

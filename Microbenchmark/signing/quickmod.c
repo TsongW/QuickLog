@@ -26,7 +26,7 @@ typedef struct {block rd_key[11]; } AES_KEY;
 
 const static unsigned char aeskey[16] = {0};
 static AES_KEY const_aeskey;
-static block current_key, current_state;
+static block current_key, current_state, my_tag;
 static unsigned long long my_time[640000];
 
 /* Some helper functions */
@@ -110,36 +110,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
     cipher_blks[2] = xor_block(cipher_blks[2], sign_keys); \
     cipher_blks[3] = xor_block(cipher_blks[3], sign_keys); \
   } while(0)
-
-
-
-#define aes_enclasr_8(cipher_blks,sched)                              \
-	do{                                                              \
-		cipher_blks[0] = _mm_aesenclast_si128(cipher_blks[0], sched[rnds]); \
-		cipher_blks[1] =  _mm_aesenclast_si128(cipher_blks[1], sched[rnds]); \
-		cipher_blks[2] =  _mm_aesenclast_si128(cipher_blks[2], sched[rnds]); \
-		cipher_blks[3] =  _mm_aesenclast_si128(cipher_blks[3], sched[rnds]); \
-		cipher_blks[4] =  _mm_aesenclast_si128(cipher_blks[4], sched[rnds]); \
-		cipher_blks[5] = _mm_aesenclast_si128(cipher_blks[5], sched[rnds]); \
-		cipher_blks[6] = _mm_aesenclast_si128(cipher_blks[6], sched[rnds]); \
-		cipher_blks[7] =  _mm_aesenclast_si128(cipher_blks[7], sched[rnds]); \
-	} while(0)
-
-
-
-#define ecb_8(cipher_blks,sched)           \
-	do{                                    \
-		aes_enc_8(cipher_blks,sched, 1);   \
-		aes_enc_8(cipher_blks,sched, 2);   \
-		aes_enc_8(cipher_blks,sched, 3);   \
-		aes_enc_8(cipher_blks,sched, 4);   \
-		aes_enc_8(cipher_blks,sched, 5);   \
-		aes_enc_8(cipher_blks,sched, 6);   \
-		aes_enc_8(cipher_blks,sched, 7);   \
-		aes_enc_8(cipher_blks,sched, 8);   \
-		aes_enc_8(cipher_blks,sched, 9);   \
-		aes_enclasr_8(cipher_blks,sched);  \
-	} while(0)
 
 
 //XOR 8 cipher blocks
@@ -308,7 +278,6 @@ static void first_blks(block *cipher_blks, uint16_t counter, unsigned char *log_
 	cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
 	gen_7_blks(cipher_blks,log_msg,counter);
 	AES_ECB_8(cipher_blks,sched, sign_keys);	
-	//ecb_8(cipher_blks,sched);
 }
 
 static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const unsigned char *log_msg, const block *sched, block sign_keys)
@@ -365,7 +334,7 @@ static void quickmod_int(void)
 }
 
 /**  
-* MAC, signing a log message and updating the signing-key & state
+* QuickLog signing a log message and updating the signing-key & state
 * Input @log_msg: a log data, 
 * Computing block format: a block(16 bytes) contains "<i>||M_i",  
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
@@ -387,7 +356,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	counter =0;
 	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
 	out = ((block *)(proof));
-	kernel_fpu_begin();
+
 	//xor the signing key with the aes fixed key
 	mask =_mm_xor_si128(sched[0], current_key);
 	tag_blks[2] = _mm_loadu_si128(&current_key);
@@ -466,7 +435,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
 			current_key = xor_block(cipher_blks[2], current_state);
 			current_state = xor_block(cipher_blks[1], current_state);	
-	}else{
+	}else{//generating new key
 	next[0] = zero_block();/*0 for updatting state*/
 	next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	mask =_mm_xor_si128(sched[0], current_state);
@@ -476,9 +445,132 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 	}
 
 	*out = tag_blks[2];
-	kernel_fpu_end();
 	return proof[0];
 }
+
+
+
+
+
+/**  
+* QuickLog2: updating the tag, signing-key & state
+* Input @log_msg: a log data, 
+* Computing block format: a block(16 bytes) contains "<i>||M_i",  
+*                         2 bytes counter(<i>) and 14 bytes log data(M_i)
+* Output: a 64-byte tag
+**/
+static __u64 mac_core_2(unsigned char *log_msg, size_t msg_len)
+{
+	//pr_info("Entering: %s\n", __func__);
+	uint16_t j, remaining, counter;
+	//tmp: used for padding the last block
+	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
+	block * sched, *out;
+	block mask, cipher_blks[8], tag_blks[3];
+	block next[2];
+	__u64 proof[2];
+	//int nblks;
+	//nblks = (msg_len/112); 
+	remaining=(uint16_t)(msg_len);
+	counter =0;
+	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys	
+	out = ((block *)(proof));
+
+	//xor the signing key with the aes fixed key
+	mask =_mm_xor_si128(sched[0], current_key);
+	tag_blks[2] = _mm_loadu_si128(&current_key);
+
+	if(remaining>=112)//start 8 blocks parallel computing 
+	{
+		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
+		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
+		gen_7_blks(cipher_blks,log_msg,counter);
+		AES_ECB_8(cipher_blks,sched, mask);
+		tag_8_xor(tag_blks,cipher_blks);
+		counter +=8;
+		log_msg +=110;	
+		remaining -=112;
+		while(remaining>=112){	
+			//cmpt_8_blks(cipher_blks, counter, log_msg, sched, mask);
+			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
+			gen_7_blks(cipher_blks,log_msg,counter);
+			AES_ECB_8(cipher_blks,sched, mask);
+			tag_8_xor(tag_blks,cipher_blks);
+			counter +=8;
+			log_msg +=110;
+			remaining -=112;
+		}
+	}//end of nblks
+	
+	if(remaining >=56){//4-block, 4*14=56 bytes log data
+		cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
+		tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
+		tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
+		remaining -= 56;
+		counter +=4;
+		log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining >= 28) {//2-block, 2*14=28 bytes log data
+		//cmpt_2_blks(cipher_blks,counter, log_msg, sched, mask);
+		if(counter){ 
+			cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
+		}else{//contains the first block
+			cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
+			cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
+		}
+		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
+		AES_ECB_2(cipher_blks,sched, mask);
+		tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
+		remaining -= 28;
+		counter +=2;
+		log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining >= 14) {//1-block 14 bytes log data
+		if(counter){
+			tmp.bl = _mm_loadu_si128((block*)log_msg);//Not the first block
+		}else{//it is the first block
+			tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
+		}
+		tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
+		tmp.bl =_mm_xor_si128(tmp.bl, mask);
+		//AES_single(&tmp.bl, sched);
+		aes_single(tmp.bl, sched);
+		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
+		remaining -= 14;
+		counter +=1;
+		log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
+	}
+    
+	if (remaining){//last block + generating new key
+		if (counter)  log_msg +=2;
+		counter +=(14-remaining);
+		tmp.bl = zero_block();
+		tmp.u16[0]= counter;
+		memcpy(&tmp.u8[2], log_msg, remaining);
+		cipher_blks[0] = xor_block(tmp.bl, mask);
+		cipher_blks[1] = xor_block(current_state, sched[0]);
+		cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));
+		AES_ECB_3(cipher_blks, sched);
+		tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
+		current_key = xor_block(cipher_blks[2], current_state);
+		current_state = xor_block(cipher_blks[1], current_state);
+		my_tag = xor_block(tag_blks[2], my_tag );	
+	}else{//generating new key
+		next[0] = zero_block();/*0 for updatting state*/
+		next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
+		mask =_mm_xor_si128(sched[0], current_state);
+		AES_ECB_2(next, sched, mask);
+		current_key = xor_block(next[1], current_state);
+		current_state = xor_block(next[0], current_state);
+		my_tag = xor_block(tag_blks[2], my_tag );	
+	}
+
+	*out = tag_blks[2];
+	return proof[0];
+}
+
+
+
 
 #undef gen_7_blks
 #undef prernd_8
@@ -524,20 +616,39 @@ static int __init quickmod_init(void)
 	__u64 tag;	
 	quickmod_int();
 
-	msleep(10);
+	msleep(100);
 
 	for(j=0;j<times;j++)
 	{	
 		start_time = ktime_get_ns();//CLOCK_MONOTONIC
-		//kernel_fpu_begin();
+		kernel_fpu_begin();
 		tag = mac_core(str,len);
-		//kernel_fpu_end();
+		kernel_fpu_end();
 		end_time = ktime_get_ns();
 		my_time[j] = end_time - start_time;
 	}
 
 	my_med =  median(iteration,  my_time);  
-	pr_info("median time =%llu ns, message size =%d B \n", my_med, len);
+	pr_info("QuickLog Signing Median Time =%llu ns, Message Size =%d B \n", my_med, len);
+
+
+
+	msleep(100);
+
+	for(j=0;j<times;j++)
+	{	
+		start_time = ktime_get_ns();//CLOCK_MONOTONIC
+		kernel_fpu_begin();
+		tag = mac_core(str,len);
+		kernel_fpu_end();
+		end_time = ktime_get_ns();
+		my_time[j] = end_time - start_time;
+	}
+
+	my_med =  median(iteration,  my_time);  
+	pr_info("QuickLog2 Signing Median Time =%llu ns, Message Size =%d B \n", my_med, len);
+
+
 
 	return 0;
 }
