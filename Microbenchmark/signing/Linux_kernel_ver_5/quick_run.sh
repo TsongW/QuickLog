@@ -1,8 +1,5 @@
 #!/bin/bash
 
-
-#make clean && make
-
 sudo dmesg --clear
 sudo insmod quickmod.ko len=64
 dmesg

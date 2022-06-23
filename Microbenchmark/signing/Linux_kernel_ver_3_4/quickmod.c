@@ -639,7 +639,7 @@ static int __init benchmarking(void)
 
 	//memset(integrity_proof,'1',(2));
 
-	pr_info("\n_______Starting: log size = %d______\n", len);
+	pr_info("\n_______Starting: log size = %dB______\n", len);
 	crypto_int();
 	
 	msleep(100);
@@ -802,7 +802,7 @@ static int __init benchmarking(void)
 	
 	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu, log size =%dB\n", kenny_med[0], my_sd, len);
 
-	pr_info("-----------------------------------------------------------\n");
+	pr_info("\n-----------------------------------------------------------\n");
 	return 0;
 }
 
