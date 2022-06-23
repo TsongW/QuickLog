@@ -260,26 +260,6 @@ void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
 
 //end of marcos---------------------------------------------
 
-
-
-
-
-static void first_blks(block *cipher_blks, uint16_t counter, unsigned char *log_msg, block *sched, block sign_keys)
-{
-		//int j =1;
-		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
-		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-		gen_7_blks(cipher_blks,log_msg,counter);	
-		AES_ECB_8(cipher_blks, sched, sign_keys);			
-}
-
- static void cmpt_8_blks(block *cipher_blks, uint16_t counter, unsigned char *log_msg, block *sched, block sign_keys)
- {
-	cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
-	gen_7_blks(cipher_blks,log_msg,counter);
-	AES_ECB_8(cipher_blks,sched, sign_keys);	
-}
-
 static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const unsigned char *log_msg, const block *sched, block sign_keys)
 {
 		if(counter){		
@@ -414,7 +394,6 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 		}
 		tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
 		tmp.bl =_mm_xor_si128(tmp.bl, mask);
-		//AES_single(&tmp.bl, sched);
 		aes_single(tmp.bl, sched);
 		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
 		remaining -= 14;
@@ -435,7 +414,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 			tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
 			current_key = xor_block(cipher_blks[2], current_state);
 			current_state = xor_block(cipher_blks[1], current_state);	
-	}else{//generating new key
+	}else{//only generating new key and state
 	next[0] = zero_block();/*0 for updatting state*/
 	next[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
 	mask =_mm_xor_si128(sched[0], current_state);
@@ -457,7 +436,7 @@ static __u64 mac_core(unsigned char *log_msg, size_t msg_len)
 * Input @log_msg: a log data, 
 * Computing block format: a block(16 bytes) contains "<i>||M_i",  
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
-* Output: a 64-byte tag
+* 
 **/
 static __u64 mac_core_2(unsigned char *log_msg, size_t msg_len)
 {
@@ -612,7 +591,7 @@ static int __init quickmod_init(void)
 	unsigned long long start_time, end_time, my_med;
     memset(str,'a',(8192));
     int j, times;
-	times = iteration+8000;
+	times = iteration;
 	__u64 tag;	
 	quickmod_int();
 
@@ -646,6 +625,7 @@ static int __init quickmod_init(void)
 	}
 
 	my_med =  median(iteration,  my_time);  
+	
 	pr_info("QuickLog2 Signing Median Time =%llu ns, Message Size =%d B \n", my_med, len);
 
 

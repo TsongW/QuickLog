@@ -11,8 +11,9 @@
 #include <linux/sort.h>
 #include <linux/moduleparam.h>
 
-#include <asm/i387.h>//linux version <5
-//#include <asm/fpu/api.h> //version =5
+//#include <asm/i387.h>//linux version <5
+#include <asm/fpu/api.h> //version =5
+
 
 
 #define  _MM_MALLOC_H_INCLUDED
