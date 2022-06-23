@@ -11,26 +11,21 @@ The signing and updating algorithms of QuickLog2 remain the same as those of Qui
 We ran our evaluation using the following setup:
 
 - CentOS 7 (Linux version 3.10.0-1160.49.1.el7) with Linux Audit version 2.8.5-4.el7
-(Please make sure the version of the Linux kernel is 3.10)
 
 
 # Instructions for evaluating signing cost
 To measure the application-independent running time of the
 signing cost of QuickLog/QuickLog2, you need to create a kernel module as follows:
 
-- Run ` sudo yum install "kernel-devel-uname-r == $(uname -r)" `
-- Go to the `signing` directory and run `make` to compile.
-- Run  `sudo dmesg --clear`
-- Load `quickmod` via `sudo insmod quickmod.ko len=[message length]` 
-- Run`dmesg` command to check results.
-- Unload the kernel module using `sudo rmmod quickmod` when you are done.
+- Go to the `signing` directory, select the folder that corresponds to your kernel, and run `./install.sh` to compile.
+- Run  `./quick_run.sh ` to benchmark.
 
 # Instructions for evaluating verification cost
 Verification can be run from the user space. To measure the verification cost,
 
 - Go to the `verifying` directory and run `make` to compile.
-- Run `./verify [data length]`.
-- Run `make clean` when you are done.
+- Run `./verify [data length]`to benchmark.
+
 
 # Install 
 
