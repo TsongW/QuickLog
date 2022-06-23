@@ -24,7 +24,7 @@ signing cost of QuickLog/QuickLog2, you need to create a kernel module as follow
 Verification can be run from the user space. To measure the verification cost,
 
 - Go to the `verifying` directory and run `make` to compile.
-- Run `./verify [data length]`to benchmark.
+- Run `./verify `to benchmark.
 
 
 # Install 
