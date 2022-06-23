@@ -342,9 +342,10 @@ static void crypto_int(void)
 /**  
 * MAC, signing a log message and updating the signing-key & state
 * Input @log_msg: a log data, 
+        @msg_len: the length of the log data 
 * Computing block format: a block(16 bytes) contains "<i>||M_i",  
 *                         2 bytes counter(<i>) and 14 bytes log data(M_i)
-* Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
+* Output: T(64-byte tag)
 **/
 static __u64 mac_core( const char *log_msg, const int msg_len,  __u64 * proof)
 {
