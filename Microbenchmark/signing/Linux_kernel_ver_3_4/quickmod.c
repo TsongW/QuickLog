@@ -695,7 +695,7 @@ static int __init benchmarking(void)
 	}
 	quick_med[0] +=  median(10000,  my_time);  
 
-	pr_info("-[QuickLog Sign]-: median time =%llu ns, standard deviation = %llu, log size =%dB \n", quick_med[0], my_sd,  len);
+	pr_info("-[QuickLog Sign]-: median time =%llu ns, standard deviation = %llu\n", quick_med[0], my_sd);
 
 	msleep(100);
 
@@ -730,7 +730,7 @@ static int __init benchmarking(void)
 	my_sd = sd_sum/10;
 	my_sd = int_sqrt(my_sd);
 
-	pr_info("--[QuickLog2 Sign]--: median time =%llu ns, standard deviation = %llu, log size =%dB \n", quick_2_med[0], my_sd, len);
+	pr_info("--[QuickLog2 Sign]--: median time =%llu ns, standard deviation = %llu\n", quick_2_med[0], my_sd);
 
 
 /*************************************Kennylogging *********************************/
@@ -800,7 +800,7 @@ static int __init benchmarking(void)
 
 	msleep(100);
 	
-	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu, log size =%dB\n", kenny_med[0], my_sd, len);
+	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], my_sd);
 
 	pr_info("\n-----------------------------------------------------------\n");
 	return 0;
