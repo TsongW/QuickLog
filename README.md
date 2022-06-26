@@ -17,7 +17,7 @@ To measure the application-independent running time of the signing cost of Quick
 # How to evaluate verification cost
 To measure the verification cost,
 
-- Go to the `verifying` directory and run `make` to compile.
+- Go to the `verifying` directory and run `./install.sh` to compile.
 - Run `./verify_run.sh `to benchmark.
 
 
