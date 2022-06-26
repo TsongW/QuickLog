@@ -12,6 +12,14 @@
 #include "blake2-impl.h"
 #include "blake2.h"
 
+// Sources:
+// Riccardo Paccagnella,Kevin Liao, Dave Tian, and Adam Bates. 
+// Logging to the danger zone: Race condition attacks and defenses on system audit frameworks. In CCS 2020, pages 1551–1574, 2020.
+// https://bitbucket.org/sts-lab/kennyloggings/src/master/kernel-module/
+
+
+
+
 //region Blake2 functions
 //---------------------------------------------------------------------------------------
 
