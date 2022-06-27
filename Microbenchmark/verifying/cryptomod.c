@@ -8,9 +8,17 @@
 #include <linux/random.h>
 #include <linux/siphash.h>
 #include <linux/slab.h>
-
+#include <linux/ktime.h>
 #include "blake2-impl.h"
 #include "blake2.h"
+
+
+
+static int len= 256; //generating size
+module_param(len,int,S_IRUGO);  
+
+#define iteration 200000
+
 
 // Sources:
 // Riccardo Paccagnella,Kevin Liao, Dave Tian, and Adam Bates. 
@@ -397,6 +405,7 @@ static int audit_precompute_keys(void *arg)
 	return 0;
 }
 
+#if 0
 static u64 sign_event(void)
 {
 	char *log_msg = "Some arbitrary log message"; // log message
@@ -442,6 +451,18 @@ static u64 sign_event(void)
 
 	return integrity_proof;
 }
+#endif 
+static u64 sign_event(char *log_msg, siphash_key_t first_key,size_t key_len)
+{
+	//size_t log_msg_len = strlen(log_msg);
+	size_t  log_msg_len = len;
+	u64 integrity_proof;
+
+	// Generate the integrity proof with the current key
+	integrity_proof = siphash(log_msg, log_msg_len, &first_key);
+
+	return integrity_proof;
+}
 
 static int verify_signature(u64 integrity_proof, siphash_key_t key)
 {
@@ -466,11 +487,12 @@ static int __init cryptomod_init(void)
 
 	// Compute first key
 	int i, ret;
+	unsigned long long  start_time, end_time, kenny_med[10], quick_med[10], quick_2_med[10], my_med;
 	siphash_key_t first_key;
 	key_len = sizeof(first_key);
 	get_random_bytes(&first_key, key_len);
-
-	pr_info("First key computed\n");
+	u64 counter[2];
+	
 
 	// Precompute first set synchronously
 	blake2b_state blake_state;
