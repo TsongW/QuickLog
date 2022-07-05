@@ -602,9 +602,9 @@ int main(int argc, char* argv[]){
 	} 
 	sum =0;
 	for(i=0;i<10;i++) sum +=quick_med[i];
-	mean = (sum/10);
+	mean = (sum/10)/8;
 	sd_sum =0;
-	for(i=0;i<10;i++) sd_sum +=(quick_med[i]-mean)*(quick_med[i]-mean);
+	for(i=0;i<10;i++) sd_sum +=(quick_med[i]/8-mean)*(quick_med[i]/8-mean);
 	my_sd = sd_sum/10;
 	my_sd = sqrt(my_sd); 
 
