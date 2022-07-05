@@ -624,7 +624,7 @@ static int __init benchmarking(void)
 	
 	int i, j;
 	char *str; 
-	unsigned long long  start_time, end_time, kenny_med[10], quick_med[10], quick_2_med[10], my_med;
+	unsigned long long  start_time, end_time, kenny_med[10], quick_med[10], quick_2_med[10];
 	unsigned long long  mean, my_sd, sd_sum, sum;
 	__u64  quick_tag, kenny_tag, integrity_proof[2];
 	size_t key_len;
@@ -799,7 +799,7 @@ static int __init benchmarking(void)
 
 	
 	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], my_sd);
-
+	pr_info("\n-----------------------------------------------------------\n");
 	msleep(10000);
 	return 0;
 }
