@@ -581,7 +581,7 @@ unsigned long long median(size_t n, unsigned long long * x) {
 
     if(n%2==0) {
         // if there is an even number of elements, return mean of the two elements in the middle
-        return ((x[n/2] + x[n/2 - 1]) / 2.0);
+        return ((x[n/2] + x[n/2 - 1]) / 2);
     } else {
         // else return the element in the middle
         return  x[n/2];
@@ -646,7 +646,7 @@ static int __init benchmarking(void)
 
 
 /*************************************QuickLog*************************************************/	
-
+	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
 	//Quicklog signing a message
 	for(i=0;i<10;i++){
 		for(j=0;j<iteration;j++)
@@ -682,11 +682,11 @@ static int __init benchmarking(void)
 	// Appending the tag to the log message	
 	for(j=0;j<10000;j++)
 	{	
-		audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
+		
 
 		start_time = ktime_get_ns();
 
-		audit_log_format(ab, " p=%llx", kenny_tag);
+		audit_log_format(ab, " p=%llx", quick_tag);
 		
 		end_time = ktime_get_ns();
 		
@@ -697,7 +697,7 @@ static int __init benchmarking(void)
 
 	pr_info("-[QuickLog Sign]-: median time =%llu ns, standard deviation = %llu \n", quick_med[0], my_sd);
 
-	msleep(100);
+	msleep(10000);
 
 /*************************************QuickLog2*************************************************/
 	for(i=0;i<10;i++){
@@ -732,9 +732,9 @@ static int __init benchmarking(void)
 
 	pr_info("--[QuickLog2 Sign]--: median time =%llu ns, standard deviation = %llu\n", quick_2_med[0], my_sd);
 
-
+	msleep(10000);
 /*************************************Kennylogging *********************************/
-
+	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
 
 	//Kennylogging signing a message
 	for(i=0;i<10;i++){
@@ -797,12 +797,10 @@ static int __init benchmarking(void)
 	
 	kenny_med[0] +=  median(10000,  my_time);  
 
-
-	msleep(100);
 	
 	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], my_sd);
 
-	pr_info("\n-----------------------------------------------------------\n");
+	msleep(10000);
 	return 0;
 }
 
