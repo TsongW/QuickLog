@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <math.h>
+
 #include <x86intrin.h>
 #include <immintrin.h>
 #include <emmintrin.h>   
@@ -20,7 +22,7 @@
 #endif
 
 /* Some helper functions */
-#define ITERATIONS 100000
+#define ITERATIONS 200000
 #define rnds 10 //AES rounds
 typedef __m128i block;
 typedef struct { __m128i rd_key[11]; } AES_KEY;
@@ -30,7 +32,7 @@ static AES_KEY const_aeskey;
 static block signing_pair[16];
 static block s_0;/* initial State */
 static int  len;
-static unsigned long long my_time[160000];
+static unsigned long long my_time[320000], quick_med[10];
 
 /********************************************************************/
 // AES Key Expansion
@@ -260,6 +262,102 @@ void my_update(block * next_pair,  const block * current_state, const block *sch
 }
 
 
+
+uint64_t sign_core( const unsigned char *log_msg, const int *len,  const block *current_key)
+{
+	uint16_t remaining, counter;
+	size_t msg_len = *len;
+	//tmp: used for padding the last block
+	union { uint16_t u16[8]; uint8_t u8[16]; block bl; } tmp;
+	register block * sched =((block *)(const_aeskey.rd_key)); //point to AES round keys	;
+	block mask, cipher_blks[8], tag_blks[3];
+	union { uint64_t u64[2]; block bl; } out;
+
+	//int nblks;
+	//nblks = (msg_len/112); 
+	remaining=(uint16_t)(*len);
+	counter =0;
+	
+ 
+	mask =_mm_xor_si128(sched[0], *current_key);//xor the signing key with the aes public key
+	tag_blks[2] = _mm_loadu_si128(current_key);
+
+	if(remaining>=112)//start 8 blocks parallel computing 
+	{
+		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
+		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
+		gen_7_blks(cipher_blks,log_msg,counter);
+		AES_ECB_8(cipher_blks,sched, mask);
+		tag_blks_xor_8(tag_blks,cipher_blks);
+		counter +=8;
+		log_msg +=110;	
+		remaining -=112;
+		while(remaining>=112){	
+			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
+			gen_7_blks(cipher_blks,log_msg,counter);
+			AES_ECB_8(cipher_blks,sched, mask);
+			tag_blks_xor_8(tag_blks,cipher_blks);
+			counter +=8;
+			log_msg +=110;
+			remaining -=112;
+		}
+	}//end of nblks
+
+	if(remaining >=56){//4-block, 4*14=56 bytes log data
+		cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
+		tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
+		tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
+		remaining -= 56;
+		counter +=4;
+		log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining >= 28) {//2-block, 2*14=28 bytes log data
+		if(counter){ 
+			cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
+		}else{//contains the first block
+			cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
+			cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
+		}
+		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
+		AES_ECB_2(cipher_blks,sched, mask);
+		tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
+		remaining -= 28;
+		counter +=2;
+		log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining >= 14) {//1-block 14 bytes log data
+		if(counter){
+			tmp.bl = _mm_loadu_si128((block*)log_msg);//Not the first block
+		}else{//it is the first block
+			tmp.bl = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
+		}
+		tmp.bl = _mm_insert_epi16(tmp.bl, counter+1, 0);
+		aes_single(cipher_blks, sched,mask);
+		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);
+		remaining -= 14;
+		counter +=1;
+		log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
+	}
+	if (remaining){//last block + generating new key
+		if (counter)  log_msg +=2;
+		counter +=(14-remaining);
+		tmp.bl = zero_block();
+		tmp.u16[0]= counter;
+		while(remaining--){
+			tmp.u8[remaining+1]=log_msg[remaining-1];
+		}
+		tmp.bl = xor_block(tmp.bl, mask);
+		aes_single(cipher_blks, sched, mask);
+		tag_blks[2] = xor_block(tag_blks[2], tmp.bl);	
+	}
+    
+	out.bl = _mm_loadu_si128((block*)&tag_blks[2]);
+	return out.u64[0];
+}
+
+
+
+
 /**  
 * Input @log_msg: a log data, 
         @len: the lenght of input data,
@@ -413,14 +511,15 @@ unsigned long long median(size_t n, unsigned long long * x) {
 
 int main(int argc, char* argv[]){
 	
-	int i,j;
-	uint64_t  vtag[8];
+	int i,j,k;
+	uint64_t  stag[8], vtag[8];
 	block  current_pair[16];
 	struct timespec start, end;
 	clockid_t id = CLOCK_MONOTONIC;
 	unsigned long long my_med;
 	block * sched_key = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 	
+	unsigned long long  mean, my_sd, sd_sum, sum;
 	
 	if (argc >=2) len = atoi(argv[1]);
     else len = 256;
@@ -446,38 +545,70 @@ int main(int argc, char* argv[]){
 	quickmod_int();
 	sleep(0.5);
 
-	
-	for(i=0;i<ITERATIONS;i++){
-		clock_gettime(id, &start);
-		/*Generating 8 signing keys*/
-		my_update(&current_pair[0], &s_0,  sched_key);
-		my_update(&current_pair[2], &current_pair[0],  sched_key);
-		my_update(&current_pair[4], &current_pair[2],  sched_key);
-		my_update(&current_pair[6], &current_pair[4],  sched_key);
-		my_update(&current_pair[8], &current_pair[6],  sched_key);
-		my_update(&current_pair[10], &current_pair[8], sched_key);
-		my_update(&current_pair[12], &current_pair[10],sched_key);
-		my_update(&current_pair[14], &current_pair[12],sched_key);
+	for(j=0;j<10;j++){
+		for(i=0;i<ITERATIONS;i++){
+			/*Generating 8 signing keys*/
+			my_update(&current_pair[0], &s_0,  sched_key);
+			my_update(&current_pair[2], &current_pair[0],  sched_key);
+			my_update(&current_pair[4], &current_pair[2],  sched_key);
+			my_update(&current_pair[6], &current_pair[4],  sched_key);
+			my_update(&current_pair[8], &current_pair[6],  sched_key);
+			my_update(&current_pair[10], &current_pair[8], sched_key);
+			my_update(&current_pair[12], &current_pair[10],sched_key);
+			my_update(&current_pair[14], &current_pair[12],sched_key);
 
-		/*Computing 8 messages*/
-		vtag[0]=verify_core((unsigned char*)str, &len, &current_pair[1]);
-		vtag[1]=verify_core((unsigned char*)str1, &len, &current_pair[3]);
-		vtag[2]=verify_core((unsigned char*)str2, &len, &current_pair[5]);
-		vtag[3]=verify_core((unsigned char*)str3, &len, &current_pair[7]);
-		vtag[4]=verify_core((unsigned char*)str4, &len, &current_pair[9]);
-		vtag[5]=verify_core((unsigned char*)str5, &len, &current_pair[11]);
-		vtag[6]=verify_core((unsigned char*)str6, &len, &current_pair[13]);
-		vtag[7]=verify_core((unsigned char*)str7, &len, &current_pair[15]);
+			/*Computing 8 messages*/
+			stag[0]=sign_core((unsigned char*)str, &len, &current_pair[1]);
+			stag[1]=sign_core((unsigned char*)str1, &len, &current_pair[3]);
+			stag[2]=sign_core((unsigned char*)str2, &len, &current_pair[5]);
+			stag[3]=sign_core((unsigned char*)str3, &len, &current_pair[7]);
+			stag[4]=sign_core((unsigned char*)str4, &len, &current_pair[9]);
+			stag[5]=sign_core((unsigned char*)str5, &len, &current_pair[11]);
+			stag[6]=sign_core((unsigned char*)str6, &len, &current_pair[13]);
+			stag[7]=sign_core((unsigned char*)str7, &len, &current_pair[15]);
 
-		clock_gettime(id,&end);
-		my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
-		
-	}
-	
-	
-	
-	my_med =  median(ITERATIONS,  my_time);  
-	printf("median verification time = %lld ns, message size =%d B\n", ((unsigned long long) (my_med/8)), len);
+			clock_gettime(id, &start);
+			/*Generating 8 signing keys*/
+			my_update(&current_pair[0], &s_0,  sched_key);
+			my_update(&current_pair[2], &current_pair[0],  sched_key);
+			my_update(&current_pair[4], &current_pair[2],  sched_key);
+			my_update(&current_pair[6], &current_pair[4],  sched_key);
+			my_update(&current_pair[8], &current_pair[6],  sched_key);
+			my_update(&current_pair[10], &current_pair[8], sched_key);
+			my_update(&current_pair[12], &current_pair[10],sched_key);
+			my_update(&current_pair[14], &current_pair[12],sched_key);
+
+			/*Computing 8 messages*/
+			vtag[0]=verify_core((unsigned char*)str, &len, &current_pair[1]);
+			vtag[1]=verify_core((unsigned char*)str1, &len, &current_pair[3]);
+			vtag[2]=verify_core((unsigned char*)str2, &len, &current_pair[5]);
+			vtag[3]=verify_core((unsigned char*)str3, &len, &current_pair[7]);
+			vtag[4]=verify_core((unsigned char*)str4, &len, &current_pair[9]);
+			vtag[5]=verify_core((unsigned char*)str5, &len, &current_pair[11]);
+			vtag[6]=verify_core((unsigned char*)str6, &len, &current_pair[13]);
+			vtag[7]=verify_core((unsigned char*)str7, &len, &current_pair[15]);
+
+			for(k=0;k<8;k++){
+				if(vtag[k]!=stag[k])printf("tag verfication fail!\n");break;
+			}
+
+			clock_gettime(id,&end);
+			my_time[i] = ( (unsigned long long)(end.tv_sec - start.tv_sec))*1000000000 + (end.tv_nsec - start.tv_nsec);
+			
+		}
+
+		quick_med[j] =  median(ITERATIONS,  my_time);
+		sleep(0.5);
+	} 
+	sum =0;
+	for(i=0;i<10;i++) sum +=quick_med[i];
+	mean = (sum/10);
+	sd_sum =0;
+	for(i=0;i<10;i++) sd_sum +=(quick_med[i]-mean)*(quick_med[i]-mean);
+	my_sd = sd_sum/10;
+	my_sd = sqrt(my_sd); 
+
+	printf("	      -[QuickLog Verify]-: median time = %lld ns, standard deviation =%lld \n", ((unsigned long long) (quick_med[0]/8)), my_sd);
 
 	return 0;
 

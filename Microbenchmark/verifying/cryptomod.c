@@ -8,25 +8,18 @@
 #include <linux/random.h>
 #include <linux/siphash.h>
 #include <linux/slab.h>
+
 #include <linux/ktime.h>
+#include <linux/sort.h>
+#include <linux/moduleparam.h>
+
 #include "blake2-impl.h"
 #include "blake2.h"
 
-
-
 static int len= 256; //generating size
 module_param(len,int,S_IRUGO);  
-
+static unsigned long long my_time[320000];
 #define iteration 200000
-
-
-// Sources:
-// Riccardo Paccagnella,Kevin Liao, Dave Tian, and Adam Bates. 
-// Logging to the danger zone: Race condition attacks and defenses on system audit frameworks. In CCS 2020, pages 1551–1574, 2020.
-// https://bitbucket.org/sts-lab/kennyloggings/src/master/kernel-module/
-
-
-
 
 //region Blake2 functions
 //---------------------------------------------------------------------------------------
@@ -405,7 +398,7 @@ static int audit_precompute_keys(void *arg)
 	return 0;
 }
 
-#if 0
+
 static u64 sign_event(void)
 {
 	char *log_msg = "Some arbitrary log message"; // log message
@@ -451,18 +444,6 @@ static u64 sign_event(void)
 
 	return integrity_proof;
 }
-#endif 
-static u64 sign_event(char *log_msg, siphash_key_t first_key,size_t key_len)
-{
-	//size_t log_msg_len = strlen(log_msg);
-	size_t  log_msg_len = len;
-	u64 integrity_proof;
-
-	// Generate the integrity proof with the current key
-	integrity_proof = siphash(log_msg, log_msg_len, &first_key);
-
-	return integrity_proof;
-}
 
 static int verify_signature(u64 integrity_proof, siphash_key_t key)
 {
@@ -478,25 +459,133 @@ static int verify_signature(u64 integrity_proof, siphash_key_t key)
 	return 0;
 }
 
+
+
+
+
+
+
+
+static u64 bench_sign_event(char *log_msg, siphash_key_t key)
+{
+	//size_t log_msg_len = strlen(log_msg);
+	size_t  log_msg_len = len;
+	u64 integrity_proof;
+
+	// Generate the integrity proof with the current key
+	integrity_proof = siphash(log_msg, log_msg_len, &key);
+
+	return integrity_proof;
+}
+
+
+
+
+static int bench_verify_signature(u64 integrity_proof, char *log_msg,  siphash_key_t key)
+{
+	//char *log_msg = "Some arbitrary log message"; // log message
+	//size_t log_msg_len = strlen(log_msg);
+	size_t  log_msg_len = len;
+
+	// Regenerate the integrity proof with the current key
+	u64 new_proof = siphash(log_msg, log_msg_len, &(key));
+
+	if (new_proof != integrity_proof)
+		return -1;
+
+	return 0;
+}
+
+
+
+
+//****************median function*************************
+static int compare(const void* a, const void* b)
+{
+    unsigned long long arg1 = *(unsigned long long *)a;
+    unsigned long long  arg2 = *(unsigned long long *)b;
+ 
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
+}
+ 
+unsigned long long median(size_t n, unsigned long long * x) {
+    //unsigned long long temp;
+    sort(x, n, sizeof(unsigned long long), &compare, NULL);
+
+    if(n%2==0) {
+        // if there is an even number of elements, return mean of the two elements in the middle
+        return ((x[n/2] + x[n/2 - 1]) / 2);
+    } else {
+        // else return the element in the middle
+        return  x[n/2];
+    }
+}
+
 //---------------------------------------------------------------------------------------
 //endregion
 
 static int __init cryptomod_init(void)
 {
-	pr_info("Entering: %s\n", __func__);
+	//pr_info("Entering: %s\n", __func__);
 
 	// Compute first key
-	int i, ret;
-	unsigned long long  start_time, end_time, kenny_med[10], quick_med[10], quick_2_med[10], my_med;
+	int i=0, j=0, ret;
 	siphash_key_t first_key;
 	key_len = sizeof(first_key);
 	get_random_bytes(&first_key, key_len);
-	u64 counter[2];
-	
+
+	//pr_info("First key computed\n");
 
 	// Precompute first set synchronously
 	blake2b_state blake_state;
 	siphash_key_t curr_key = first_key;
+	siphash_key_t sign_curr_key = first_key;
+	siphash_key_t verify_curr_key = first_key;
+
+	u64 sign_tag;
+	char *str; 
+	str = kmalloc(10240, GFP_KERNEL);
+    memset(str,'a',(8192));
+
+	unsigned long long  start_time, end_time, kenny_med[10];
+	unsigned long long  mean, my_sd, sd_sum, sum;
+
+	for(i=0;i<10;i++){
+		for(j=0;j<iteration;j++){
+			//sign
+			ret = blake2b_init(&blake_state, key_len);
+			ret = blake2b_update(&blake_state, (uint8_t *)&sign_curr_key, key_len);
+			ret = blake2b_final(&blake_state, (uint8_t *)&sign_curr_key, key_len);
+			sign_tag = bench_sign_event(str, sign_curr_key);
+			//verification
+			start_time = ktime_get_ns();
+			ret = blake2b_init(&blake_state, key_len);
+			ret = blake2b_update(&blake_state, (uint8_t *)&verify_curr_key, key_len);
+			ret = blake2b_final(&blake_state, (uint8_t *)&verify_curr_key, key_len);
+			if (bench_verify_signature(sign_tag, str, verify_curr_key) == -1) {
+					pr_info("Failed verification for %d-th log entry\n", i);
+					break;
+			}
+			end_time = ktime_get_ns();
+			my_time[j] = end_time - start_time;
+
+		}
+		kenny_med[i] =  median(iteration,  my_time); 
+		msleep(100);
+	}
+
+	sum =0;
+	for(i=0;i<10;i++) sum +=kenny_med[i];
+	mean = (sum/10);
+	sd_sum =0;
+	for(i=0;i<10;i++) sd_sum +=(kenny_med[i]-mean)*(kenny_med[i]-mean);
+	my_sd = sd_sum/10;
+	my_sd = int_sqrt(my_sd);
+
+	pr_info("\n(KennyLoggings Verify): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], my_sd);
+	#if 0
 	for (i = 0; i < KEYS_PER_SET; i++) {
 		ret = blake2b_init(&blake_state, key_len);
 		if (ret != 0) {
@@ -569,8 +658,11 @@ static int __init cryptomod_init(void)
 	pr_info("Verification phase completed\n");
 
 	kthread_stop(precompute_tsk);
+#endif 
 
-	pr_info("Leaving: %s\n", __func__);
+	
+
+	//pr_info("Leaving: %s\n", __func__);
 	return 0;
 }
 
