@@ -611,8 +611,6 @@ static u64 sign_event(char *log_msg, siphash_key_t sign_key,size_t key_len)
 //---------------------------------------------------------------------------------------
 
 
-
-
 static int __init benchmarking(void)
 {
 	
@@ -671,7 +669,7 @@ static int __init benchmarking(void)
 	q_sd = sd_sum/10;
 	q_sd = int_sqrt(q_sd);
 
-	msleep(1000);
+	msleep(100);
 
 	
 
@@ -708,7 +706,7 @@ static int __init benchmarking(void)
 
 	
 
-	msleep(1000);
+	msleep(100);
 /*************************************Kennylogging *********************************/
 	
 	//Kennylogging signing a message
@@ -754,10 +752,10 @@ static int __init benchmarking(void)
 	msleep(100);
 
 
-
-	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
 	// Appending the tag to the log message	
-	for(j=0;j<10000;j++)
+	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
+	
+	for(j=0;j<1000;j++)
 	{	
 
 		start_time = ktime_get_ns();
@@ -769,7 +767,7 @@ static int __init benchmarking(void)
 		my_time[j] = end_time - start_time;
 		
 	}
-	appd_med = median(10000,  my_time);
+	appd_med = median(1000,  my_time);
 	kenny_med[0] +=  appd_med;  
 	quick_med[0] +=  appd_med;
 
@@ -779,7 +777,7 @@ static int __init benchmarking(void)
 	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], k_sd);
 
 	pr_info("\n-----------------------------------------------------------\n");
-	msleep(10000);
+	msleep(20000);
 	return 0;
 }
 

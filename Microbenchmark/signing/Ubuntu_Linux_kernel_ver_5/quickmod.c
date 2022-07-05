@@ -618,14 +618,13 @@ static u64 sign_event(char *log_msg, siphash_key_t first_key,size_t key_len)
 //endregion
 
 
-
 static int __init benchmarking(void)
 {
 	
 	int i, j;
 	char *str; 
-	unsigned long long  start_time, end_time, kenny_med[10], quick_med[10], quick_2_med[10];
-	unsigned long long  mean, my_sd, sd_sum, sum;
+	unsigned long long  start_time, end_time, appd_med, kenny_med[10], quick_med[10], quick_2_med[10];
+	unsigned long long  mean, q_sd, q2_sd, k_sd, sd_sum, sum;
 	__u64  quick_tag, kenny_tag, integrity_proof[2];
 	size_t key_len;
 	siphash_key_t first_key;
@@ -646,7 +645,7 @@ static int __init benchmarking(void)
 
 
 /*************************************QuickLog*************************************************/	
-	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
+	
 	//Quicklog signing a message
 	for(i=0;i<10;i++){
 		for(j=0;j<iteration;j++)
@@ -674,30 +673,12 @@ static int __init benchmarking(void)
 	mean = (sum/10);
 	sd_sum =0;
 	for(i=0;i<10;i++) sd_sum +=(quick_med[i]-mean)*(quick_med[i]-mean);
-	my_sd = sd_sum/10;
-	my_sd = int_sqrt(my_sd);
+	q_sd = sd_sum/10;
+	q_sd = int_sqrt(q_sd);
 
 	msleep(100);
 
-	// Appending the tag to the log message	
-	for(j=0;j<10000;j++)
-	{	
-		
-
-		start_time = ktime_get_ns();
-
-		audit_log_format(ab, " p=%llx", quick_tag);
-		
-		end_time = ktime_get_ns();
-		
-		my_time[j] = end_time - start_time;
-		
-	}
-	quick_med[0] +=  median(10000,  my_time);  
-
-	pr_info("-[QuickLog Sign]-: median time =%llu ns, standard deviation = %llu \n", quick_med[0], my_sd);
-
-	msleep(10000);
+	
 
 /*************************************QuickLog2*************************************************/
 	for(i=0;i<10;i++){
@@ -727,15 +708,14 @@ static int __init benchmarking(void)
 	mean = (sum/10);
 	sd_sum =0;
 	for(i=0;i<10;i++) sd_sum +=(quick_2_med[i]-mean)*(quick_2_med[i]-mean);
-	my_sd = sd_sum/10;
-	my_sd = int_sqrt(my_sd);
+	q2_sd = sd_sum/10;
+	q2_sd = int_sqrt(q2_sd);
 
-	pr_info("--[QuickLog2 Sign]--: median time =%llu ns, standard deviation = %llu\n", quick_2_med[0], my_sd);
+	
 
-	msleep(10000);
+	msleep(100);
 /*************************************Kennylogging *********************************/
-	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
-
+	
 	//Kennylogging signing a message
 	for(i=0;i<10;i++){
 	for(j=0;j<iteration;j++)
@@ -758,8 +738,8 @@ static int __init benchmarking(void)
 	mean = (sum/10);
 	sd_sum =0;
 	for(i=0;i<10;i++) sd_sum +=(kenny_med[i]-mean)*(kenny_med[i]-mean);
-	my_sd = sd_sum/10;
-	my_sd = int_sqrt(my_sd);
+	k_sd = sd_sum/10;
+	k_sd = int_sqrt(k_sd);
 
 
    //Erasing Kennylogging's current key
@@ -779,10 +759,10 @@ static int __init benchmarking(void)
 	msleep(100);
 
 
-
-
 	// Appending the tag to the log message	
-	for(j=0;j<10000;j++)
+	audit_log_format(ab, "type=SOCKADDR msg=audit(1650461786.949:105297428)  : saddr=0100");
+	
+	for(j=0;j<1000;j++)
 	{	
 
 		start_time = ktime_get_ns();
@@ -794,16 +774,19 @@ static int __init benchmarking(void)
 		my_time[j] = end_time - start_time;
 		
 	}
-	
-	kenny_med[0] +=  median(10000,  my_time);  
+	appd_med = median(1000,  my_time);
+	kenny_med[0] +=  appd_med;  
+	quick_med[0] +=  appd_med;
 
-	
-	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], my_sd);
+
+	pr_info("-[QuickLog Sign]-: median time =%llu ns, standard deviation = %llu\n", quick_med[0], q_sd);
+	pr_info("--[QuickLog2 Sign]--: median time =%llu ns, standard deviation = %llu\n", quick_2_med[0], q2_sd);
+	pr_info("(KennyLoggings Sign): median time =%llu ns, standard deviation = %llu\n", kenny_med[0], k_sd);
+
 	pr_info("\n-----------------------------------------------------------\n");
-	msleep(10000);
+	msleep(20000);
 	return 0;
 }
-
 static void __exit quickmod_exit(void)
 {
 	pr_info("Module removed:%s \n", __func__);
