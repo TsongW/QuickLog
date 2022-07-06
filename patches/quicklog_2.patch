@@ -1,55 +1,99 @@
+diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile aes/kernel/Makefile
+--- linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile	2021-11-09 08:29:30.000000000 -0500
++++ aes/kernel/Makefile	2022-05-24 13:25:03.719871099 -0400
+@@ -1,6 +1,7 @@
+ #
+ # Makefile for the linux kernel.
+ #
++ccflags-y := -std=gnu99 -Wno-declaration-after-statement -mmmx -maes -mpreferred-stack-boundary=4
+ 
+ obj-y     = fork.o exec_domain.o panic.o printk.o \
+ 	    cpu.o exit.o itimer.o time.o softirq.o resource.o \
+diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-mac1.h
+--- linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h	1969-12-31 19:00:00.000000000 -0500
++++ aes/kernel/aes-mac1.h	2022-05-24 13:23:59.817873784 -0400
+@@ -0,0 +1,27 @@
++/*
++*/
++
++
++
++
++#ifndef AES_MAC1_H
++#define AES_MAC1_H
++
++
++#if defined(__cplusplus)
++extern "C" {
++#endif
++
++  typedef __m128i block;
++  typedef struct {block rd_key[11]; } AES_KEY;
++ 
++
++  /* Streaming API */
++  void AES_128_Key_Expansion(const unsigned char *userkey, void *key);  
++
++#if defined(__cplusplus)
++}
++#endif
++
++#endif
++
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/audit.c	2022-05-16 10:48:55.216895736 -0400
-@@ -66,6 +66,19 @@
++++ aes/kernel/audit.c	2022-05-24 13:23:23.780875299 -0400
+@@ -66,6 +66,20 @@
  
  #include "audit.h"
  
-+/* QuickLog2 integrity */
++/* Cryptolog integrity */
 +#include <linux/random.h>
 +#include <linux/types.h>
-+//#include <crypto/algapi.h>
 +#include <asm/i387.h>
++
 +#define  _MM_MALLOC_H_INCLUDED
 +#include <x86intrin.h>
 +#undef _MM_MALLOC_H_INCLUDED
 +
-+//#include "aes-mac1.h"
++#include "aes-mac1.h"
++//#include "aes-mac1-impl.h"
 +//---------------------------------------------------------------------------------------
 +
 +
  /* No auditing will take place until audit_initialized == AUDIT_INITIALIZED.
   * (Initialization happens after skb_init is called.) */
  #define AUDIT_DISABLED		-1
-@@ -179,6 +192,417 @@ struct audit_reply {
+@@ -179,6 +193,360 @@ struct audit_reply {
  	struct sk_buff *skb;
  };
  
 +
-+/**********************************QuickLog2 integrity**************************/
-+//static DEFINE_SPINLOCK(lock_set_logging);
++//Cryptolog integrity
++//---------------------------------------------------------------------------------------
 +
++//static DEFINE_SPINLOCK(lock_set_logging);
++#if 0
 +typedef __m128i block;
 +typedef struct {block rd_key[11]; } AES_KEY;
++#endif 
 +
 +const static unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
-+
-+static AES_KEY const_aeskey;
-+//static block addend[8];//addend number 1 to 8
-+static block current_key, current_state, my_tag;
++static AES_KEY pk;
++static block current_key, current_state;
++static uint64_t update_one[2];
++static block *one = ((block *)(update_one));
++block quick_tag;
 +
 +
 +/* Some helper functions */
 +#define rnds 10 //AES rounds
 +#define xor_block(x,y)        _mm_xor_si128(x,y)
 +#define zero_block()          _mm_setzero_si128()
-+/*Load a 14-byte log data and 2-byte counter for a block*/
++/*Load 2-byte counter following 14-byte log data*/
 +#define gen_logging_blk(log,ctr) _mm_insert_epi16(_mm_loadu_si128(log), ctr, 0)
 +
-+
 +// Sources:
-+// Dead Store Elimination (Still) Considered Harmful, USENIX 2017
-+// https://compsec.sysnet.ucsd.edu/secure_memzero.h
 +//
 +#define EXPAND_ASSIST(v1,v2,v3,v4,shuff_const,aes_const)                    \
 +  do{                                                                       \
@@ -70,7 +114,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +    __m128i x0,x1,x2;
 +    __m128i *kp = (__m128i *)key;
 +    kp[0] = x0 = _mm_loadu_si128((__m128i*)userkey);
-+    x2 = _mm_setzero_si128();
++    x2 = zero_block();
 +    EXPAND_ASSIST(x0,x1,x2,x0,255,1);   kp[1]  = x0;
 +    EXPAND_ASSIST(x0,x1,x2,x0,255,2);   kp[2]  = x0;
 +    EXPAND_ASSIST(x0,x1,x2,x0,255,4);   kp[3]  = x0;
@@ -85,31 +129,24 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +#undef EXPAND_ASSIST
 +
 +
-+void signing_key_init(block current_key, block current_state, char *first_key, char *first_state)
-+{
-+	get_random_bytes(first_key, 16);
-+	get_random_bytes(first_state, 16);
-+	current_key = _mm_loadu_si128((block*)first_key);
-+	current_state = _mm_loadu_si128((block*)first_state);
-+}
++//-------------------------------------------------------------------
 +
 +
-+//----------------------AES Macros-------------------------------
-+
++#if 1
 +#define gen_7_blks(cipher_blks,log_msg,counter)                            \
 +    do{                                                                    \
-+		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),(counter+2)); \
-+		cipher_blks[2]  = gen_logging_blk((block*)(log_msg+26),(counter+3)); \
-+		cipher_blks[3]  = gen_logging_blk((block*)(log_msg+40),(counter+4)); \
-+		cipher_blks[4]  = gen_logging_blk((block*)(log_msg+54),(counter+5)); \
-+		cipher_blks[5]  = gen_logging_blk((block*)(log_msg+68),(counter+6)); \
-+		cipher_blks[6]  = gen_logging_blk((block*)(log_msg+82),(counter+7)); \
-+		cipher_blks[7]  = gen_logging_blk((block*)(log_msg+96),(counter+8)); \
++		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); \
++		cipher_blks[2]  = gen_logging_blk((block*)(log_msg+26),counter+3); \
++		cipher_blks[3]  = gen_logging_blk((block*)(log_msg+40),counter+4); \
++		cipher_blks[4]  = gen_logging_blk((block*)(log_msg+54),counter+5); \
++		cipher_blks[5]  = gen_logging_blk((block*)(log_msg+68),counter+6); \
++		cipher_blks[6]  = gen_logging_blk((block*)(log_msg+82),counter+7); \
++		cipher_blks[7]  = gen_logging_blk((block*)(log_msg+96),counter+8); \
 +	} while(0)
 +
 +
 +//AES pre-round 8 blocks
-+#define prernd_8(cipher_blks, key)                       \
++#define prernd_8(cipher_blks, key)                   \
 +	do{                                                  \
 +		cipher_blks[0] = xor_block(cipher_blks[0], key); \
 +		cipher_blks[1] = xor_block(cipher_blks[1], key); \
@@ -132,192 +169,162 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +
 +
 +//XOR 8 cipher blocks
-+
-+#define tag_8_xor(tag_blks,cipher_blks)  \
-+  do{  \
++#define tag_8_xor(tag_blks,cipher_blks)                                                                       \
++  do{                                                                                                              \
 +	tag_blks[0] =xor_block(xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  \
 +	tag_blks[1] =xor_block(xor_block(cipher_blks[4], cipher_blks[5]), xor_block(cipher_blks[6], cipher_blks[7]));  \
 +	tag_blks[2] =xor_block(tag_blks[2], xor_block(tag_blks[0], tag_blks[1]));                                      \
 +  } while(0)
 +
 +
-+#define enc_8(cipher_blks, key)                                 \
-+	do{                                                         \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
-+		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], key); \
-+		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], key); \
-+		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], key); \
-+		cipher_blks[4] = _mm_aesenc_si128(cipher_blks[4], key); \
-+		cipher_blks[5] = _mm_aesenc_si128(cipher_blks[5], key); \
-+		cipher_blks[6] = _mm_aesenc_si128(cipher_blks[6], key); \
-+		cipher_blks[7] = _mm_aesenc_si128(cipher_blks[7], key); \
-+  	}while(0)
 +
 +
-+
-+#define enc_4(cipher_blks, key)                                 \
-+	do{                                                         \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
-+		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], key); \
-+		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], key); \
-+		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], key); \
-+  	}while(0)
-+
-+
-+#define enc_3(cipher_blks, key)                                 \
-+	do{                                                         \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
-+		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], key); \
-+		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], key); \
-+  	}while(0)
-+
-+
-+#define enc_2(cipher_blks, key)                                 \
-+	do{                                                         \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], key); \
-+		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], key); \
-+  	}while(0)
-+
-+
-+/*Marcos used to unrolling ECB*/
-+
-+#define aes_single(cipher_blks, sched)                               \
-+	do{                                                              \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[1]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[2]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[3]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[4]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[5]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[6]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[7]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[8]); \
-+		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[9]); \
-+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);\
-+	} while(0)
-+
-+
-+#define AES_ECB_2(cipher_blks, sched)   \
-+	do{     \
-+		enc_2(cipher_blks, sched[1]);              \
-+		enc_2(cipher_blks, sched[2]);              \
-+		enc_2(cipher_blks, sched[3]);              \
-+		enc_2(cipher_blks, sched[4]);              \
-+		enc_2(cipher_blks, sched[5]);              \
-+		enc_2(cipher_blks, sched[6]);              \
-+		enc_2(cipher_blks, sched[7]);              \
-+		enc_2(cipher_blks, sched[8]);              \
-+		enc_2(cipher_blks, sched[9]);              \
-+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
-+		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-+	}while (0)
-+
-+
-+#define AES_ECB_3(cipher_blks, sched)    \
-+	do{                                  \
-+		enc_3(cipher_blks, sched[1]);              \
-+		enc_3(cipher_blks, sched[2]);              \
-+		enc_3(cipher_blks, sched[3]);              \
-+		enc_3(cipher_blks, sched[4]);              \
-+		enc_3(cipher_blks, sched[5]);              \
-+		enc_3(cipher_blks, sched[6]);              \
-+		enc_3(cipher_blks, sched[7]);              \
-+		enc_3(cipher_blks, sched[8]);              \
-+		enc_3(cipher_blks, sched[9]);              \
-+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
-+		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-+		cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-+	}while (0)
-+
-+
-+
-+#define AES_ECB_4(cipher_blks, sched, sign_keys)   \
-+	do{                                        	   \
-+		prernd_4(cipher_blks,sign_keys);           \
-+		enc_4(cipher_blks, sched[1]);              \
-+		enc_4(cipher_blks, sched[2]);              \
-+		enc_4(cipher_blks, sched[3]);              \
-+		enc_4(cipher_blks, sched[4]);              \
-+		enc_4(cipher_blks, sched[5]);              \
-+		enc_4(cipher_blks, sched[6]);              \
-+		enc_4(cipher_blks, sched[7]);              \
-+		enc_4(cipher_blks, sched[8]);              \
-+		enc_4(cipher_blks, sched[9]);              \
-+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
-+		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-+		cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]); \
-+		cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]); \
-+	}while (0)
-+
-+
-+
-+#define AES_ECB_8(cipher_blks, sched, sign_keys)   \
-+	do{                                        	   \
-+		prernd_8(cipher_blks,sign_keys);           \
-+		enc_8(cipher_blks, sched[1]);              \
-+		enc_8(cipher_blks, sched[2]);              \
-+		enc_8(cipher_blks, sched[3]);              \
-+		enc_8(cipher_blks, sched[4]);              \
-+		enc_8(cipher_blks, sched[5]);              \
-+		enc_8(cipher_blks, sched[6]);              \
-+		enc_8(cipher_blks, sched[7]);              \
-+		enc_8(cipher_blks, sched[8]);              \
-+		enc_8(cipher_blks, sched[9]);              \
-+		cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]); \
-+		cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]); \
-+		cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]); \
-+		cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]); \
-+		cipher_blks[4] =_mm_aesenclast_si128(cipher_blks[4], sched[10]); \
-+		cipher_blks[5] =_mm_aesenclast_si128(cipher_blks[5], sched[10]); \
-+		cipher_blks[6] =_mm_aesenclast_si128(cipher_blks[6], sched[10]); \
-+		cipher_blks[7] =_mm_aesenclast_si128(cipher_blks[7], sched[10]); \
-+	}while (0)
-+
-+//end of marcos---------------------------------------------
-+
-+
-+static void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_msg, const block *sched, block sign_keys)
++static inline void AES_single(block *cipher_blks, block *sched)
 +{
-+	if(counter){		
-+		cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); 
-+	}else{//contains the first block
-+		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
++    uint8_t j;
++	for(j=0;j<10;j++){
++		* cipher_blks = _mm_aesenc_si128(*cipher_blks, sched[j]); 
++	}	
++	*cipher_blks =_mm_aesenclast_si128(*cipher_blks, sched[10]);		
++}
++
++
++
++
++
++static inline void AES_ECB_2(block *cipher_blks, block *sched)
++{
++    uint8_t j;
++	for(j=0;j<10;j++){
++		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[j]); 
++		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], sched[j]); 
++	}	
++	cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);
++	cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]);		
++}
++
++
++
++static inline void AES_ECB_4(block *cipher_blks, block *sched)
++{
++    uint8_t j;
++	for(j=0;j<10;j++){
++		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[j]); 
++		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], sched[j]); 
++		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], sched[j]); 
++		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], sched[j]); 
++	}	
++	cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);
++	cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]);		
++	cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]);
++	cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]);
++}
++
++
++
++
++static inline void AES_ECB_8(block *cipher_blks, block *sched)
++{
++    uint8_t j;
++	for(j=0;j<10;j++){
++		cipher_blks[0] = _mm_aesenc_si128(cipher_blks[0], sched[j]); 
++		cipher_blks[1] = _mm_aesenc_si128(cipher_blks[1], sched[j]); 
++		cipher_blks[2] = _mm_aesenc_si128(cipher_blks[2], sched[j]); 
++		cipher_blks[3] = _mm_aesenc_si128(cipher_blks[3], sched[j]); 
++		cipher_blks[4] = _mm_aesenc_si128(cipher_blks[4], sched[j]); 
++		cipher_blks[5] = _mm_aesenc_si128(cipher_blks[5], sched[j]); 
++		cipher_blks[6] = _mm_aesenc_si128(cipher_blks[6], sched[j]); 
++		cipher_blks[7] = _mm_aesenc_si128(cipher_blks[7], sched[j]);
++	}	
++	cipher_blks[0] =_mm_aesenclast_si128(cipher_blks[0], sched[10]);
++	cipher_blks[1] =_mm_aesenclast_si128(cipher_blks[1], sched[10]);		
++	cipher_blks[2] =_mm_aesenclast_si128(cipher_blks[2], sched[10]);
++	cipher_blks[3] =_mm_aesenclast_si128(cipher_blks[3], sched[10]);
++	cipher_blks[4] =_mm_aesenclast_si128(cipher_blks[4], sched[10]);
++	cipher_blks[5] =_mm_aesenclast_si128(cipher_blks[5], sched[10]);
++	cipher_blks[6] =_mm_aesenclast_si128(cipher_blks[6], sched[10]);
++	cipher_blks[7] =_mm_aesenclast_si128(cipher_blks[7], sched[10]);
++}
++
++
++static inline void first_blks(block *cipher_blks, uint16_t counter, char *log_msg, block *sched, block sign_keys)
++{
++		//uint8_t i;
++		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
 +		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-+	}
-+	cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),(counter+2)); 
-+	cipher_blks[2]  = gen_logging_blk((block*)(log_msg+26),(counter+3)); 
-+	cipher_blks[3]  = gen_logging_blk((block*)(log_msg+40),(counter+4)); 
-+	AES_ECB_4(cipher_blks, sched, sign_keys);
++		gen_7_blks(cipher_blks,log_msg,counter);
++		/*AES Preround*/
++		prernd_8(cipher_blks,sign_keys);
++		/*AES Round 1-9*/	
++		//for(i=1; i<rnds; ++i) aes_enc_8(cipher_blks,sched, i);			
++		/*Last Round(10)*/
++		//aes_enclast_8(cipher_blks, sched[rnds]);
++		AES_ECB_8(cipher_blks, sched);		
 +}
 +
-+
-+static void cmpt_2_blks(block *cipher_blks, uint16_t counter, const char *log_msg, const block *sched, block sign_keys)
-+{
-+	if(counter){		
-+		cipher_blks[0]  = gen_logging_blk((block*)(log_msg),(counter+1)); //Not the first block
-+	}else{//contains the first block
-+		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
-+		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], (counter+1), 0);
-+	}
-+	cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),(counter+2)); 
-+	cipher_blks[0] =_mm_xor_si128(cipher_blks[0], sign_keys); 
-+	cipher_blks[1] =_mm_xor_si128(cipher_blks[1], sign_keys); 
-+	AES_ECB_2(cipher_blks,sched);
-+}
-+
-+
-+static void cmpt_a_blk(block* cipher_blk, uint16_t counter, const char *log_msg, const block *sched, block sign_keys)
-+{	
-+	if(counter){
-+			*cipher_blk = _mm_loadu_si128((block*)log_msg);//Not the first block
-+	}else{//it is the first block
-+			*cipher_blk = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
-+	}
-+	*cipher_blk = _mm_insert_epi16(*cipher_blk, counter+1, 0);
++ static inline void cmpt_8_blks(block *cipher_blks, uint16_t counter, char *log_msg, block *sched, block sign_keys)
++ {
++	//uint8_t i;
++	cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
++	gen_7_blks(cipher_blks,log_msg,counter);
 +	/*AES Preround */
-+	*cipher_blk =_mm_xor_si128(*cipher_blk, sign_keys);
-+	aes_single(cipher_blk, sched);
++	prernd_8(cipher_blks, sign_keys);
++	/*AES Round 1-9*/
++	//for (i=0; i<rnds; ++i) aes_enc_8(cipher_blks, sched, i);		
++	/*AES Last Round(10)*/
++	AES_ECB_8(cipher_blks, sched);	
 +}
 +
++
++static inline void cmpt_4_blks(block *cipher_blks, uint16_t counter, const char *log_msg, block *sched, block sign_keys)
++{
++    	//uint8_t i;
++		if(counter){		
++			cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); 
++		}else{//contains the first block
++			cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
++			cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
++		}
++		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
++		cipher_blks[2]  = gen_logging_blk((block*)(log_msg+26),counter+3); 
++		cipher_blks[3]  = gen_logging_blk((block*)(log_msg+40),counter+4); 
++		/*AES Preround*/
++		prernd_4(cipher_blks,sign_keys);
++		AES_ECB_4(cipher_blks, sched);
++}
++
++
++static inline void cmpt_2_blks(block *cipher_blks, uint16_t counter, const char *log_msg, block *sched, block sign_keys)
++{
++    	
++		 if(counter){		
++			cipher_blks[0]  = gen_logging_blk((block*)(log_msg),counter+1); //Not the first block
++		}else{//contains the first block
++			cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);
++			cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
++		}
++		cipher_blks[1]  = gen_logging_blk((block*)(log_msg+12),counter+2); 
++		/*AES Preround */
++		cipher_blks[0] =_mm_xor_si128(cipher_blks[0], sign_keys);
++		cipher_blks[1] =_mm_xor_si128(cipher_blks[1], sign_keys);
++		AES_ECB_2(cipher_blks, sched);
++}
++
++
++static inline void cmpt_a_blk(block* cipher_blk, uint16_t counter, const char *log_msg, block *sched, block sign_keys)
++{
++    	
++		if(counter){
++				*cipher_blk = _mm_loadu_si128((block*)log_msg);//Not the first block
++		}else{//it is the first block
++				*cipher_blk = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2);//the first block
++		}
++		*cipher_blk = _mm_insert_epi16(*cipher_blk, counter+1, 0);
++		
++		/*AES Preround */
++		*cipher_blk =_mm_xor_si128(*cipher_blk, sign_keys);
++		AES_single(cipher_blk, sched);
++}
 +
 +
 +/**  
@@ -325,111 +332,90 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +* Input @log_msg: a log data, 
 +* Computing block format: a block(16 bytes) contains "<i>||M_i",  
 +*                         2 bytes counter(<i>) and 14 bytes log data(M_i)
-+* Output: T(128-byte tag), user can modify the tag length in "audit_log_end"
++* Output: T(128-byte tag), user can modify the tag length in  audit_log_end
 +**/
 +static void mac_core( char *log_msg)
 +{
-+	block mask, cipher_blks[8], tag_blks[3];
-+	unsigned char my_pad[16];
-+	//__u64 tmper;
-+	register block * sched = ((block *)(const_aeskey.rd_key)); 
-+	register block * aes_blks = cipher_blks;
-+	block *pad_zeros;
-+	uint16_t remaining, counter, *pad_header;
-+	size_t msg_len = strlen(log_msg);
-+	remaining = (uint16_t)msg_len;
-+	counter =0;
-+	pad_header = ((uint16_t*)(my_pad));	
-+	pad_zeros = ((block *)(my_pad));
-+
-+	//kernel_fpu_begin();
++    size_t msg_len = strlen(log_msg);
++	uint16_t i, remaining , counter = 0;  /*now the max log size is 8192 KB*/
++	block * sched, *aes_blks, *last;
++	block mask, update_mask, cipher_blks[9], tag_blks[3], next[2];
++	char pad[18], *chr_cnt; /*for padding the last block*/
++	int nblks;
++	nblks = (msg_len/112); 
++	remaining =(uint16_t)(msg_len%112);
++	sched = ((block *)(pk.rd_key)); //point to AES round keys
++	aes_blks = cipher_blks;
++	last = ((block *)(pad)); 
++	chr_cnt = (char *)&counter;
++	tag_blks[2] = current_key;
 +	
-+	mask = _mm_xor_si128(sched[0], current_key);//xor the signing key with the aes public key
-+	tag_blks[2] = _mm_loadu_si128(&current_key);
-+
-+	if(remaining>=112)//start 8 blocks parallel computing 
++	mask =_mm_xor_si128(sched[0], current_key);/*xor the signing key with the aes public key*/
++	update_mask =_mm_xor_si128(sched[0], current_state);/*xor the current state with the aes public key*/
++	
++	if(nblks)//start 8 blocks parallel computing 
 +	{
-+		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
-+		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
-+		gen_7_blks(cipher_blks,log_msg,counter);
-+		AES_ECB_8(cipher_blks,sched, mask);
-+		tag_8_xor(tag_blks,cipher_blks);
++		first_blks(aes_blks, counter, log_msg, sched, mask);
++		tag_8_xor(tag_blks,aes_blks);
 +		counter +=8;
-+		log_msg +=110;/*112-byte computed, apply 110-byte, leaving 2-byte overwrote by counter*/	
-+		remaining -= 112;
-+		while(remaining >= 112){	
-+			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
-+			gen_7_blks(cipher_blks,log_msg,counter);
-+			AES_ECB_8(cipher_blks,sched, mask);
-+			tag_8_xor(tag_blks,cipher_blks);/*)Xor each block*/
-+			counter += 8;
-+			log_msg += 110;
-+			remaining -= 112;
++		log_msg +=110;/*112-byte computed, apply 110-byte, leaving 2-byte overwrote by counter*/
++		--nblks;
++		while(nblks){
++			cmpt_8_blks(aes_blks, counter, log_msg, sched, mask);
++			tag_8_xor(tag_blks,aes_blks);
++			counter +=8;
++			log_msg +=110;
++			--nblks;
 +		}
-+	}//end of nblks
-+	
-+	if(remaining >=56){//4-block, 4*14=56 bytes log data
-+		cmpt_4_blks(aes_blks,counter, log_msg, sched, mask);
-+		tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3]));  
-+		tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
-+		remaining -= 56;
-+		counter +=4;
-+		log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
-+	}
-+	if (remaining >= 28) {//2-block, 2*14=28 bytes log data
-+		cmpt_2_blks(aes_blks, counter, log_msg, sched, mask);
-+		//AES_ECB_2(aes_blks,sched);
-+		tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
-+		remaining -= 28;
-+		counter +=2;
-+		log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
-+	}
-+	if (remaining >= 14) {//1-block 14 bytes log data
-+		cmpt_a_blk(&aes_blks[0],counter, log_msg, sched, mask);
-+		tag_blks[2] = xor_block(tag_blks[2], cipher_blks[0]);
-+		remaining -= 14;
-+		counter +=1;
-+		log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
-+	}
-+#if 1
-+	if (remaining){//last block + generating new key
-+		if (counter)  log_msg +=2;
-+		counter += (14-remaining);
-+		* pad_zeros = zero_block();
-+		* pad_header = counter;
-+		memcpy(&my_pad[2], log_msg, remaining);
-+		cipher_blks[0] = xor_block( mask, *(block*)my_pad);
-+		cipher_blks[1] = xor_block(current_state, sched[0]);
-+		cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));
-+		AES_ECB_3(cipher_blks, sched);
-+		tag_blks[2] = xor_block(cipher_blks[0], tag_blks[2]);
-+		current_key = xor_block(cipher_blks[2], current_state);
-+		current_state = xor_block(cipher_blks[1], current_state);
-+	}else{
-+		//pr_info("no remaining!\n");
-+		cipher_blks[0] = xor_block(current_state, sched[0]);/*0 for updatting state*/
-+		cipher_blks[1] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));/*1 for updatting key*/
-+		mask =_mm_xor_si128(sched[0], current_state);
-+		AES_ECB_2(cipher_blks, sched);
-+		current_key = xor_block(cipher_blks[1], current_state);
-+		current_state = xor_block(cipher_blks[0], current_state);
-+	}
-+#endif
-+	my_tag = xor_block(tag_blks[2], my_tag );
-+	
++	}//end of nblks	
++    if (remaining){
++		if(remaining >=56){//4-block, 4*14=56 bytes log data
++			cmpt_4_blks(aes_blks,counter, log_msg, sched, mask);
++			tag_blks[0] = xor_block( xor_block(aes_blks[0], aes_blks[1]), xor_block(aes_blks[2], aes_blks[3])); 
++			tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
++			remaining -= 56;
++			counter +=4;
++			log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
++		}
++		if (remaining >= 28) {//2-block, 2*14=28 bytes log data
++			cmpt_2_blks(aes_blks,counter, log_msg, sched, mask);
++			tag_blks[2] = xor_block(xor_block(aes_blks[0], aes_blks[1]), tag_blks[2]); 
++			remaining -= 28;
++			counter +=2;
++			log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
++		}
++		if (remaining >= 14) {//1-block 14 bytes log data
++			cmpt_a_blk(&aes_blks[0],counter, log_msg, sched, mask);
++			tag_blks[2] = xor_block(tag_blks[2], aes_blks[0]);
++			remaining -= 14;
++			counter +=1;
++			log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
++		}
++		if (remaining){
++			if (counter)  log_msg +=2;
++			counter += (14-remaining);
++			*last = zero_block();
++			pad[0] = chr_cnt[0];
++			pad[1] = chr_cnt[1];
++			for(i=0;i<remaining;i++) pad[i+2]=log_msg[i];
++			*last = xor_block(*last, mask);
++			AES_single(last, sched);
++		}
++    }//end of remaining
++	next[0] = update_mask;
++	next[1] = xor_block(*one, update_mask);
++	AES_ECB_2(next, sched);
++	current_key = xor_block(next[0], current_state);
++	current_state = xor_block(next[1], current_state);
++	quick_tag = xor_block(zero_block(), tag_blks[2]);
 +}
 +
 +
-+
-+
-+
-+
-+
-+
-+
-+
-+
-+
++#undef gen_7_blks
++#undef prernd_8
++#undef prernd_4
++#undef tag_8_xor
++#endif
 +
 +//-----------------------------------------------------------------
 +//endregion
@@ -439,50 +425,45 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  static void audit_set_portid(struct audit_buffer *ab, __u32 portid)
  {
  	if (ab) {
-@@ -1076,7 +1500,11 @@ static void audit_receive(struct sk_buff
+@@ -1076,7 +1444,9 @@ static void audit_receive(struct sk_buff
  /* Initialize audit support at boot time. */
  static int __init audit_init(void)
  {
 -	int i;
 +	int i; 
-+	/* QuickLog2 integrity */
-+	block s_0, mask;
-+	block init_pair[2];
-+	block * sched;
++	/* Cryptolog integrity */
++	char first_key[16], first_state[16];
  	struct netlink_kernel_cfg cfg = {
  		.input	= audit_receive,
  	};
-@@ -1100,6 +1528,23 @@ static int __init audit_init(void)
+@@ -1100,6 +1470,20 @@ static int __init audit_init(void)
  
  	for (i = 0; i < AUDIT_INODE_BUCKETS; i++)
  		INIT_LIST_HEAD(&audit_inode_hash[i]);
 +	
 +	//---------------------------------------------------------------------------------------
-+	/* QuickLog2 integrity */
-+	get_random_bytes(&s_0, sizeof(block));/*initial State */
++	/* Cryptolog integrity */
++	get_random_bytes(first_key, 16);
++	get_random_bytes(first_state, 16);
++	update_one[0]=0;
++	update_one[1]=1;
 +	kernel_fpu_begin();	
-+	AES_128_Key_Expansion(aeskey,&const_aeskey); //inital aes round keys
-+	init_pair[0] = zero_block();/*0 for updatting state*/
-+	init_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
-+	sched = ((block *)(const_aeskey.rd_key)); 
-+	mask =xor_block(s_0, sched[0]);
-+	init_pair[0] = xor_block(init_pair[0], mask);
-+	init_pair[1] = xor_block(init_pair[1], mask);
-+	AES_ECB_2(init_pair, sched);
-+	current_state = xor_block(init_pair[0], s_0);
-+	current_key = xor_block(init_pair[1], s_0);
++	AES_128_Key_Expansion(aeskey,&pk); //inital aes round keys
++	current_key = _mm_loadu_si128((block*)first_key);//inital signing key
++	current_state = _mm_loadu_si128((block*)first_state);
 +	kernel_fpu_end();
 +	//---------------------------------------------------------------------------------------
++
  
  	return 0;
  }
-@@ -1895,18 +2340,37 @@ out:
+@@ -1895,20 +2279,44 @@ out:
   */
  void audit_log_end(struct audit_buffer *ab)
  {
 +	struct nlmsghdr *nlh;
 +	char *log_msg; // log message
-+	unsigned long flags;
++       unsigned long flags;
 +	
  	if (!ab)
  		return;
@@ -492,40 +473,34 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 -		struct nlmsghdr *nlh = nlmsg_hdr(ab->skb);
 +		nlh = nlmsg_hdr(ab->skb);
 +
-+/********************** QuickLog2 integrity *********************/
-+#if 1
-+		log_msg = nlmsg_data(nlh);
-+/* Perform the cryptographic operations synchronously */
-+		spin_lock_irqsave(&(&audit_skb_queue)->lock, flags);
-+		kernel_fpu_begin();
-+		mac_core(log_msg);
-+		kernel_fpu_end();
++//------------Cryptolog start -------------
++	log_msg = nlmsg_data(nlh);
 +
-+#endif
-+/********************** QuickLog2 End  *********************/
++		
++/* Perform the cryptographic operations synchronously */
++	spin_lock_irqsave(&(&audit_skb_queue)->lock, flags);
++
++	kernel_fpu_begin();
++	mac_core(log_msg);
++	kernel_fpu_end();
++		
++	/* Add MAC to log event */
++	//audit_log_format(ab, " p=%llx", (unsigned long long)integrity_proof.u64[0]);
++	//audit_log_format(ab, " enclast test");
++	//spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
 +
  		nlh->nlmsg_len = ab->skb->len - NLMSG_HDRLEN;
  
  		if (audit_pid) {
- 			skb_queue_tail(&audit_skb_queue, ab->skb);
+-			skb_queue_tail(&audit_skb_queue, ab->skb);
++			__skb_queue_tail(&audit_skb_queue, ab->skb);
 +			spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
  			wake_up_interruptible(&kauditd_wait);
  		} else {
 +			spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
  			audit_printk_skb(ab->skb);
  		}
++//----------------------------------
  		ab->skb = NULL;
-diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile aes/kernel/Makefile
---- linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/Makefile	2022-05-16 10:52:49.823727155 -0400
-@@ -13,6 +13,10 @@ obj-y     = fork.o exec_domain.o panic.o
- 	    async.o range.o groups.o lglock.o smpboot.o ucount.o \
- 	    rh_taint.o rh_kabi.o rh_shadowman.o
- 
-+
-+
-+ccflags-y := -Wno-declaration-after-statement -mmmx -maes -mpreferred-stack-boundary=4
-+
- ifdef CONFIG_FUNCTION_TRACER
- # Do not trace debug files and internal ftrace files
- CFLAGS_REMOVE_lockdep.o = $(CC_FLAGS_FTRACE)
+ 	}
+ 	audit_buffer_free(ab);
