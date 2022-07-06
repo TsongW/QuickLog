@@ -1,17 +1,6 @@
-diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile aes/kernel/Makefile
---- linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/Makefile	2022-05-24 13:25:03.719871099 -0400
-@@ -1,6 +1,7 @@
- #
- # Makefile for the linux kernel.
- #
-+ccflags-y := -std=gnu99 -Wno-declaration-after-statement -mmmx -maes -mpreferred-stack-boundary=4
- 
- obj-y     = fork.o exec_domain.o panic.o printk.o \
- 	    cpu.o exit.o itimer.o time.o softirq.o resource.o \
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-mac1.h
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h	1969-12-31 19:00:00.000000000 -0500
-+++ aes/kernel/aes-mac1.h	2022-05-24 13:23:59.817873784 -0400
++++ aes/kernel/aes-mac1.h	2022-07-06 11:12:02.035862237 -0400
 @@ -0,0 +1,27 @@
 +/*
 +*/
@@ -42,12 +31,12 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-ma
 +
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/audit.c	2022-05-24 13:23:23.780875299 -0400
-@@ -66,6 +66,20 @@
++++ aes/kernel/audit.c	2022-07-06 11:11:00.841992275 -0400
+@@ -66,6 +66,19 @@
  
  #include "audit.h"
  
-+/* Cryptolog integrity */
++/* QuickLog2 integrity */
 +#include <linux/random.h>
 +#include <linux/types.h>
 +#include <asm/i387.h>
@@ -57,19 +46,18 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +#undef _MM_MALLOC_H_INCLUDED
 +
 +#include "aes-mac1.h"
-+//#include "aes-mac1-impl.h"
 +//---------------------------------------------------------------------------------------
 +
 +
  /* No auditing will take place until audit_initialized == AUDIT_INITIALIZED.
   * (Initialization happens after skb_init is called.) */
  #define AUDIT_DISABLED		-1
-@@ -179,6 +193,360 @@ struct audit_reply {
+@@ -179,6 +192,357 @@ struct audit_reply {
  	struct sk_buff *skb;
  };
  
 +
-+//Cryptolog integrity
++//QuickLog2 integrity
 +//---------------------------------------------------------------------------------------
 +
 +//static DEFINE_SPINLOCK(lock_set_logging);
@@ -78,8 +66,8 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +typedef struct {block rd_key[11]; } AES_KEY;
 +#endif 
 +
-+const static unsigned char aeskey[16] = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p'};
-+static AES_KEY pk;
++const static unsigned char aeskey[16] = {0};
++static AES_KEY const_aeskey;
 +static block current_key, current_state;
 +static uint64_t update_one[2];
 +static block *one = ((block *)(update_one));
@@ -332,7 +320,6 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +* Input @log_msg: a log data, 
 +* Computing block format: a block(16 bytes) contains "<i>||M_i",  
 +*                         2 bytes counter(<i>) and 14 bytes log data(M_i)
-+* Output: T(128-byte tag), user can modify the tag length in  audit_log_end
 +**/
 +static void mac_core( char *log_msg)
 +{
@@ -341,10 +328,8 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +	block * sched, *aes_blks, *last;
 +	block mask, update_mask, cipher_blks[9], tag_blks[3], next[2];
 +	char pad[18], *chr_cnt; /*for padding the last block*/
-+	int nblks;
-+	nblks = (msg_len/112); 
-+	remaining =(uint16_t)(msg_len%112);
-+	sched = ((block *)(pk.rd_key)); //point to AES round keys
++	remaining = (uint16_t)msg_len;
++	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 +	aes_blks = cipher_blks;
 +	last = ((block *)(pad)); 
 +	chr_cnt = (char *)&counter;
@@ -353,19 +338,19 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +	mask =_mm_xor_si128(sched[0], current_key);/*xor the signing key with the aes public key*/
 +	update_mask =_mm_xor_si128(sched[0], current_state);/*xor the current state with the aes public key*/
 +	
-+	if(nblks)//start 8 blocks parallel computing 
++	if(remaining>=112)//start 8 blocks parallel computing 
 +	{
 +		first_blks(aes_blks, counter, log_msg, sched, mask);
 +		tag_8_xor(tag_blks,aes_blks);
 +		counter +=8;
 +		log_msg +=110;/*112-byte computed, apply 110-byte, leaving 2-byte overwrote by counter*/
-+		--nblks;
-+		while(nblks){
++		remaining -= 112;
++		while(remaining >= 112){
 +			cmpt_8_blks(aes_blks, counter, log_msg, sched, mask);
 +			tag_8_xor(tag_blks,aes_blks);
 +			counter +=8;
 +			log_msg +=110;
-+			--nblks;
++			remaining -= 112;
 +		}
 +	}//end of nblks	
 +    if (remaining){
@@ -407,7 +392,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +	AES_ECB_2(next, sched);
 +	current_key = xor_block(next[0], current_state);
 +	current_state = xor_block(next[1], current_state);
-+	quick_tag = xor_block(zero_block(), tag_blks[2]);
++	quick_tag = xor_block(quick_tag, tag_blks[2]);
 +}
 +
 +
@@ -425,39 +410,46 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  static void audit_set_portid(struct audit_buffer *ab, __u32 portid)
  {
  	if (ab) {
-@@ -1076,7 +1444,9 @@ static void audit_receive(struct sk_buff
+@@ -1076,7 +1440,11 @@ static void audit_receive(struct sk_buff
  /* Initialize audit support at boot time. */
  static int __init audit_init(void)
  {
 -	int i;
 +	int i; 
-+	/* Cryptolog integrity */
-+	char first_key[16], first_state[16];
++	/* QuickLog2 integrity */
++	block s_0, mask;
++	block init_pair[2];
++	block * sched;
  	struct netlink_kernel_cfg cfg = {
  		.input	= audit_receive,
  	};
-@@ -1100,6 +1470,20 @@ static int __init audit_init(void)
+@@ -1100,7 +1468,25 @@ static int __init audit_init(void)
  
  	for (i = 0; i < AUDIT_INODE_BUCKETS; i++)
  		INIT_LIST_HEAD(&audit_inode_hash[i]);
 +	
 +	//---------------------------------------------------------------------------------------
-+	/* Cryptolog integrity */
-+	get_random_bytes(first_key, 16);
-+	get_random_bytes(first_state, 16);
-+	update_one[0]=0;
-+	update_one[1]=1;
++	/* QuickLog2 integrity */
++	get_random_bytes(&s_0, sizeof(block));/*initial State */
 +	kernel_fpu_begin();	
-+	AES_128_Key_Expansion(aeskey,&pk); //inital aes round keys
-+	current_key = _mm_loadu_si128((block*)first_key);//inital signing key
-+	current_state = _mm_loadu_si128((block*)first_state);
++	AES_128_Key_Expansion(aeskey,&const_aeskey); //inital aes round keys
++	init_pair[0] = zero_block();/*0 for updatting state*/
++	init_pair[1] = _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000);/*1 for updatting key*/
++	sched = ((block *)(const_aeskey.rd_key)); 
++	mask =xor_block(s_0, sched[0]);
++	init_pair[0] = xor_block(init_pair[0], mask);
++	init_pair[1] = xor_block(init_pair[1], mask);
++	AES_ECB_2(init_pair, sched);
++	current_state = xor_block(init_pair[0], s_0);
++	current_key = xor_block(init_pair[1], s_0);
++	quick_tag = zero_block();
 +	kernel_fpu_end();
-+	//---------------------------------------------------------------------------------------
-+
  
++	//---------------------------------------------------------------------------------------
  	return 0;
  }
-@@ -1895,20 +2279,44 @@ out:
+ __initcall(audit_init);
+@@ -1895,20 +2281,38 @@ out:
   */
  void audit_log_end(struct audit_buffer *ab)
  {
@@ -471,36 +463,48 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  		audit_log_lost("rate limit exceeded");
  	} else {
 -		struct nlmsghdr *nlh = nlmsg_hdr(ab->skb);
+-		nlh->nlmsg_len = ab->skb->len - NLMSG_HDRLEN;
 +		nlh = nlmsg_hdr(ab->skb);
-+
-+//------------Cryptolog start -------------
+ 
+-		if (audit_pid) {
+-			skb_queue_tail(&audit_skb_queue, ab->skb);
+-			wake_up_interruptible(&kauditd_wait);
+-		} else {
+-			audit_printk_skb(ab->skb);
+-		}
++//------------QuickLog2 start -------------
 +	log_msg = nlmsg_data(nlh);
 +
 +		
 +/* Perform the cryptographic operations synchronously */
 +	spin_lock_irqsave(&(&audit_skb_queue)->lock, flags);
-+
 +	kernel_fpu_begin();
 +	mac_core(log_msg);
 +	kernel_fpu_end();
 +		
-+	/* Add MAC to log event */
-+	//audit_log_format(ab, " p=%llx", (unsigned long long)integrity_proof.u64[0]);
-+	//audit_log_format(ab, " enclast test");
-+	//spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
++	nlh->nlmsg_len = ab->skb->len - NLMSG_HDRLEN;
 +
- 		nlh->nlmsg_len = ab->skb->len - NLMSG_HDRLEN;
- 
- 		if (audit_pid) {
--			skb_queue_tail(&audit_skb_queue, ab->skb);
-+			__skb_queue_tail(&audit_skb_queue, ab->skb);
-+			spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
- 			wake_up_interruptible(&kauditd_wait);
- 		} else {
-+			spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
- 			audit_printk_skb(ab->skb);
- 		}
++	if (audit_pid) {
++		__skb_queue_tail(&audit_skb_queue, ab->skb);
++		spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
++		wake_up_interruptible(&kauditd_wait);
++	} else {
++		spin_unlock_irqrestore(&(&audit_skb_queue)->lock, flags);
++		audit_printk_skb(ab->skb);
++	}
 +//----------------------------------
  		ab->skb = NULL;
  	}
  	audit_buffer_free(ab);
+diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile aes/kernel/Makefile
+--- linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile	2021-11-09 08:29:30.000000000 -0500
++++ aes/kernel/Makefile	2022-07-06 11:13:28.520091740 -0400
+@@ -2,6 +2,8 @@
+ # Makefile for the linux kernel.
+ #
+ 
++ccflags-y := -Wno-declaration-after-statement -mmmx -maes -mpreferred-stack-boundary=4
++
+ obj-y     = fork.o exec_domain.o panic.o printk.o \
+ 	    cpu.o exit.o itimer.o time.o softirq.o resource.o \
+ 	    sysctl.o sysctl_binary.o capability.o ptrace.o timer.o user.o \
