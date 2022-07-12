@@ -1,6 +1,6 @@
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-mac1.h
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h	1969-12-31 19:00:00.000000000 -0500
-+++ aes/kernel/aes-mac1.h	2022-07-06 11:12:02.035862237 -0400
++++ aes/kernel/aes-mac1.h	2022-07-11 21:48:11.259787055 -0400
 @@ -0,0 +1,27 @@
 +/*
 +*/
@@ -31,7 +31,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-ma
 +
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/audit.c	2022-07-06 11:11:00.841992275 -0400
++++ aes/kernel/audit.c	2022-07-11 21:47:58.757656523 -0400
 @@ -66,6 +66,19 @@
  
  #include "audit.h"
@@ -52,7 +52,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  /* No auditing will take place until audit_initialized == AUDIT_INITIALIZED.
   * (Initialization happens after skb_init is called.) */
  #define AUDIT_DISABLED		-1
-@@ -179,6 +192,357 @@ struct audit_reply {
+@@ -179,6 +192,359 @@ struct audit_reply {
  	struct sk_buff *skb;
  };
  
@@ -323,18 +323,19 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +**/
 +static void mac_core( char *log_msg)
 +{
-+    size_t msg_len = strlen(log_msg);
++   size_t msg_len = strlen(log_msg);
 +	uint16_t i, remaining , counter = 0;  /*now the max log size is 8192 KB*/
 +	block * sched, *aes_blks, *last;
 +	block mask, update_mask, cipher_blks[9], tag_blks[3], next[2];
-+	char pad[18], *chr_cnt; /*for padding the last block*/
++	unsigned char *my_pad, *chr_cnt; /*for padding the last block*/
 +	remaining = (uint16_t)msg_len;
 +	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys
 +	aes_blks = cipher_blks;
-+	last = ((block *)(pad)); 
-+	chr_cnt = (char *)&counter;
++	my_pad = (unsigned char*)kmalloc(32 * sizeof(unsigned char), GFP_KERNEL);
++	last = ((block *)(my_pad)); 
++	chr_cnt = (unsigned char *)&counter;
 +	tag_blks[2] = current_key;
-+	
++
 +	mask =_mm_xor_si128(sched[0], current_key);/*xor the signing key with the aes public key*/
 +	update_mask =_mm_xor_si128(sched[0], current_state);/*xor the current state with the aes public key*/
 +	
@@ -380,11 +381,12 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +			if (counter)  log_msg +=2;
 +			counter += (14-remaining);
 +			*last = zero_block();
-+			pad[0] = chr_cnt[0];
-+			pad[1] = chr_cnt[1];
-+			for(i=0;i<remaining;i++) pad[i+2]=log_msg[i];
-+			*last = xor_block(*last, mask);
-+			AES_single(last, sched);
++			my_pad[0] = chr_cnt[0];
++			my_pad[1] = chr_cnt[1];
++			for(i=0;i<remaining;i++) my_pad[i+2]=log_msg[i];
++			aes_blks[0] = xor_block(*last, mask);
++			AES_single(&aes_blks[0], sched);
++			tag_blks[2] = xor_block(tag_blks[2], aes_blks[0]);
 +		}
 +    }//end of remaining
 +	next[0] = update_mask;
@@ -410,7 +412,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  static void audit_set_portid(struct audit_buffer *ab, __u32 portid)
  {
  	if (ab) {
-@@ -1076,7 +1440,11 @@ static void audit_receive(struct sk_buff
+@@ -1076,7 +1442,11 @@ static void audit_receive(struct sk_buff
  /* Initialize audit support at boot time. */
  static int __init audit_init(void)
  {
@@ -423,7 +425,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  	struct netlink_kernel_cfg cfg = {
  		.input	= audit_receive,
  	};
-@@ -1100,7 +1468,25 @@ static int __init audit_init(void)
+@@ -1100,7 +1470,25 @@ static int __init audit_init(void)
  
  	for (i = 0; i < AUDIT_INODE_BUCKETS; i++)
  		INIT_LIST_HEAD(&audit_inode_hash[i]);
@@ -449,7 +451,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  	return 0;
  }
  __initcall(audit_init);
-@@ -1895,20 +2281,38 @@ out:
+@@ -1895,20 +2283,38 @@ out:
   */
  void audit_log_end(struct audit_buffer *ab)
  {
@@ -498,7 +500,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  	audit_buffer_free(ab);
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile aes/kernel/Makefile
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/Makefile	2022-07-06 11:13:28.520091740 -0400
++++ aes/kernel/Makefile	2022-07-11 21:48:37.241058321 -0400
 @@ -2,6 +2,8 @@
  # Makefile for the linux kernel.
  #
