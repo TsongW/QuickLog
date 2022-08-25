@@ -1,6 +1,6 @@
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-mac1.h
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h	1969-12-31 19:00:00.000000000 -0500
-+++ aes/kernel/aes-mac1.h	2022-08-04 17:19:14.108085032 -0400
++++ aes/kernel/aes-mac1.h	2022-08-24 19:56:26.833728902 -0400
 @@ -0,0 +1,27 @@
 +/*
 +*/
@@ -31,7 +31,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/aes-mac1.h aes/kernel/aes-ma
 +
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/audit.c	2022-08-04 17:17:46.460965123 -0400
++++ aes/kernel/audit.c	2022-08-24 19:56:16.105576634 -0400
 @@ -66,6 +66,19 @@
  
  #include "audit.h"
@@ -52,7 +52,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  /* No auditing will take place until audit_initialized == AUDIT_INITIALIZED.
   * (Initialization happens after skb_init is called.) */
  #define AUDIT_DISABLED		-1
-@@ -179,6 +192,398 @@ struct audit_reply {
+@@ -179,6 +192,401 @@ struct audit_reply {
  	struct sk_buff *skb;
  };
  
@@ -114,8 +114,6 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +    EXPAND_ASSIST(x0,x1,x2,x0,255,54);  kp[10] = x0;
 +}
 +#undef EXPAND_ASSIST
-+
-+
 +//-------------------------------------------------------------------
 +
 +#define gen_7_blks(cipher_blks,log_msg,counter)                            \
@@ -340,7 +338,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +
 +/**  
 +* MAC, signing a log message and updating the signing-key & state
-+* Input @log_msg: a log data, 
++* Input @log_msg: a log data, @msg_len: data size
 +* Computing block format: a block(16 bytes) contains "<i>||M_i",  
 +*                         2 bytes counter(<i>) and 14 bytes log data(M_i)
 +**/
@@ -348,61 +346,63 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +{
 +	uint16_t i, remaining , counter = 0;  /*now the max log size is 8192 KB*/
 +	uint16_t *pad_header;
-+	block * sched, *aes_blks, *last, *cipher_blks, *tag_blks;
++	block * sched, *last, *cipher_blks, *tag_blks, *cipher_ptr, *tag_ptr;
 +	block mask;
-+	unsigned char *my_pad, *chr_cnt; /*for padding the last block*/
++	unsigned char *my_pad, *chr_cnt, *mypad_ptr; /*for padding the last block*/
 +
 +	remaining = (uint16_t) msg_len;
 +	sched = ((block *)(const_aeskey.rd_key)); //point to AES round keys
-+	cipher_blks = (block*)kmalloc(144 * sizeof(unsigned char), GFP_KERNEL);
-+	tag_blks = (block*)kmalloc(48 * sizeof(unsigned char), GFP_KERNEL);
++	cipher_blks = (block*)kmalloc(8* sizeof(block), GFP_KERNEL);
++	tag_blks = (block*)kmalloc(3 * sizeof(block), GFP_KERNEL);
 +	my_pad = (unsigned char*)kmalloc(16 * sizeof(unsigned char), GFP_KERNEL);
-+	aes_blks = cipher_blks;
 +	last = ((block *)(my_pad)); 
 +	chr_cnt = (char *)&counter;
 +	pad_header = ((uint16_t*)(my_pad));	
 +	tag_blks[2] = _mm_loadu_si128(&current_key);
 +	mask =_mm_xor_si128(sched[0], current_key);/*xor the signing key with the aes pre-round key*/
++
++	mypad_ptr = my_pad;
++	cipher_ptr = cipher_blks;
++	tag_ptr = tag_blks;
 +	
 +	if(remaining>=112)//start 8 blocks parallel computing 
 +	{
-+		aes_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
-+		aes_blks[0]  = _mm_insert_epi16(aes_blks[0], counter+1, 0);
-+		gen_7_blks(aes_blks,log_msg,counter);
-+		AES_ECB_8(aes_blks, sched, mask);
-+		tag_8_xor(tag_blks,aes_blks);
++		cipher_blks[0]  = _mm_srli_si128(_mm_loadu_si128((block*)log_msg), 2); 
++		cipher_blks[0]  = _mm_insert_epi16(cipher_blks[0], counter+1, 0);
++		gen_7_blks(cipher_blks,log_msg,counter);
++		AES_ECB_8(cipher_blks, sched, mask);
++		tag_8_xor(tag_blks,cipher_blks);
 +		counter +=8;
 +		log_msg +=110;/*112-byte computed, apply 110-byte, leaving 2-byte overwrote by counter*/
 +		remaining -= 112;
 +		while(remaining >= 112){
-+			aes_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
-+			gen_7_blks(aes_blks,log_msg,counter);
-+			AES_ECB_8(aes_blks, sched, mask);
-+			tag_8_xor(tag_blks,aes_blks);
++			cipher_blks[0]  = gen_logging_blk((block*)log_msg, counter+1); 
++			gen_7_blks(cipher_blks,log_msg,counter);
++			AES_ECB_8(cipher_blks, sched, mask);
++			tag_8_xor(tag_blks,cipher_blks);
 +			counter +=8;
 +			log_msg +=110;
 +			remaining -= 112;
 +		}
 +	}//end of nblks	
-+
 +	if(remaining >= 56){//4-block, 4*14=56 bytes log data
-+		cmpt_4_blks(aes_blks,counter, log_msg, sched, mask);
-+		tag_blks[0] = xor_block( xor_block(aes_blks[0], aes_blks[1]), xor_block(aes_blks[2], aes_blks[3])); 
++		cmpt_4_blks(cipher_blks,counter, log_msg, sched, mask);
++		tag_blks[0] = xor_block( xor_block(cipher_blks[0], cipher_blks[1]), xor_block(cipher_blks[2], cipher_blks[3])); 
 +		tag_blks[2] = xor_block(tag_blks[2], tag_blks[0]);
 +		remaining -= 56;
 +		counter +=4;
 +		log_msg +=54;/*56-byte computed, apply 54-byte, leaving 2-byte overwrote by counter*/
 +	}
 +	if (remaining >= 28) {//2-block, 2*14=28 bytes log data
-+		cmpt_2_blks(aes_blks,counter, log_msg, sched, mask);
-+		tag_blks[2] = xor_block(xor_block(aes_blks[0], aes_blks[1]), tag_blks[2]); 
++		cmpt_2_blks(cipher_blks,counter, log_msg, sched, mask);
++		tag_blks[2] = xor_block(xor_block(cipher_blks[0], cipher_blks[1]), tag_blks[2]); 
 +		remaining -= 28;
 +		counter +=2;
 +		log_msg +=26;/*28-byte computed, apply 26-byte, leaving 2-byte overwrote by counter*/
 +	}
 +	if (remaining >= 14) {//1-block 14 bytes log data
-+		cmpt_a_blk(&aes_blks[0],counter, log_msg, sched, mask);
-+		tag_blks[2] = xor_block(tag_blks[2], aes_blks[0]);
++		cmpt_a_blk(&cipher_blks[0],counter, log_msg, sched, mask);
++		tag_blks[2] = xor_block(tag_blks[2], cipher_blks[0]);
 +		remaining -= 14;
 +		counter +=1;
 +		log_msg +=12;/*14-byte computed, apply 12-byte, leaving 2-byte overwrote by counter*/
@@ -414,23 +414,26 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +		*last = zero_block();
 +		*pad_header = counter;
 +		for(i=0;i<remaining;i++) my_pad[i+2]=log_msg[i];
-+		aes_blks[0] = xor_block(*last, mask);
-+		aes_blks[1] = xor_block(current_state, sched[0]);//pre-round [0]
-+		aes_blks[2] = xor_block(aes_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));//pre-round [1]
-+		AES_ECB_3(aes_blks, sched);
-+		tag_blks[2] = xor_block(tag_blks[2], aes_blks[0]);
-+		current_key = xor_block(aes_blks[2], current_state);
-+		current_state = xor_block(aes_blks[1], current_state);
++		cipher_blks[0] = xor_block(*last, mask);
++		cipher_blks[1] = xor_block(current_state, sched[0]);//pre-round [0]
++		cipher_blks[2] = xor_block(cipher_blks[1], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));//pre-round [1]
++		AES_ECB_3(cipher_blks, sched);
++		tag_blks[2] = xor_block(tag_blks[2], cipher_blks[0]);
++		current_key = xor_block(cipher_blks[2], current_state);
++		current_state = xor_block(cipher_blks[1], current_state);
 +		q2_tag = xor_block(tag_blks[2], q2_tag);
 +	}else{//generating new key&state
-+		aes_blks[0] = xor_block(current_state, sched[0]);//pre-round [0]
-+		aes_blks[1] = xor_block(aes_blks[0], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));//pre-round [1]
-+		AES_ECB_2(aes_blks, sched);
-+		current_key = xor_block(aes_blks[0], current_state);
-+		current_state = xor_block(aes_blks[1], current_state);
++		cipher_blks[0] = xor_block(current_state, sched[0]);//pre-round [0]
++		cipher_blks[1] = xor_block(cipher_blks[0], _mm_setr_epi32(0x0001, 0x0000, 0x0000, 0x0000));//pre-round [1]
++		AES_ECB_2(cipher_blks, sched);
++		current_key = xor_block(cipher_blks[0], current_state);
++		current_state = xor_block(cipher_blks[1], current_state);
 +		q2_tag = xor_block(tag_blks[2], q2_tag);
 +	}
-+
++	//clearing up
++	kfree(mypad_ptr);
++	kfree(cipher_ptr);
++	kfree(tag_ptr);
 +}
 +#undef gen_7_blks
 +#undef prernd_8
@@ -451,7 +454,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  static void audit_set_portid(struct audit_buffer *ab, __u32 portid)
  {
  	if (ab) {
-@@ -1076,7 +1481,11 @@ static void audit_receive(struct sk_buff
+@@ -1076,7 +1484,11 @@ static void audit_receive(struct sk_buff
  /* Initialize audit support at boot time. */
  static int __init audit_init(void)
  {
@@ -464,10 +467,11 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  	struct netlink_kernel_cfg cfg = {
  		.input	= audit_receive,
  	};
-@@ -1100,7 +1509,25 @@ static int __init audit_init(void)
+@@ -1100,7 +1512,24 @@ static int __init audit_init(void)
  
  	for (i = 0; i < AUDIT_INODE_BUCKETS; i++)
  		INIT_LIST_HEAD(&audit_inode_hash[i]);
+-
 +	
 +	//---------------------------------------------------------------------------------------
 +	/* QuickLog2  integrity */
@@ -485,12 +489,11 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
 +	current_state = xor_block(init_pair[0], s_0);
 +	current_key = xor_block(init_pair[1], s_0);
 +	kernel_fpu_end();
- 
 +	//---------------------------------------------------------------------------------------
  	return 0;
  }
  __initcall(audit_init);
-@@ -1895,20 +2322,39 @@ out:
+@@ -1895,20 +2324,39 @@ out:
   */
  void audit_log_end(struct audit_buffer *ab)
  {
@@ -540,7 +543,7 @@ diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/audit.c aes/kernel/audit.c
  	audit_buffer_free(ab);
 diff -rupN linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile aes/kernel/Makefile
 --- linux-3.10.0-1160.49.1.el7.x86_64/kernel/Makefile	2021-11-09 08:29:30.000000000 -0500
-+++ aes/kernel/Makefile	2022-08-04 17:19:35.130353644 -0400
++++ aes/kernel/Makefile	2022-08-24 19:57:53.917964923 -0400
 @@ -1,6 +1,7 @@
  #
  # Makefile for the linux kernel.
