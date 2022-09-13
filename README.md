@@ -1,8 +1,10 @@
 ﻿This repository contains the source code of the secure logging schemes QuickLog and QuickLog2 in the paper:
 "[Faster Yet Safer: Logging System Via Fixed-Key Blockcipher](https://eprint.iacr.org/2022/841.pdf)".
-We also include the code of the competitor KennyLoggings that we used for performance comparison.\
+We also include the code of the competitor KennyLoggings that we used for performance comparison.  
+  
+  
+![b1](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png) ![b2](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png) ![b3](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png)  
 
-![b1](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png) ![b2](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png) ![b3](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png)
 
 # Run-time environment
 We ran our evaluation in CentOS 7 (Linux version 3.10.0-1160.49.1.el7) with Linux Audit version 2.8.5-4.el7. 
