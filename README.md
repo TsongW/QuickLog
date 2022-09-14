@@ -2,9 +2,12 @@
 "[Faster Yet Safer: Logging System Via Fixed-Key Blockcipher](https://eprint.iacr.org/2022/841.pdf)".
 We also include the code of the competitor KennyLoggings that we used for performance comparison.  
   
-  
-![b1](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png =200x200) ![b2](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png =200x200) ![b3](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png =200x200)  
 
+<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png" width=50% height=50%>
+<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png" width=50% height=50%>
+<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png" width=50% height=50%>
+  
+  
 
 # Run-time environment
 We ran our evaluation in CentOS 7 (Linux version 3.10.0-1160.49.1.el7) with Linux Audit version 2.8.5-4.el7. 
