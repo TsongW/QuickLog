@@ -3,7 +3,7 @@
 We also include the code of the competitor KennyLoggings that we used for performance comparison.  
   
   
-![b1](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png) ![b2](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png) ![b3](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png)  
+![b1](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png =200x200) ![b2](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png =200x200) ![b3](https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png =200x200)  
 
 
 # Run-time environment
