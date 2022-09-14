@@ -3,11 +3,9 @@
 We also include the code of the competitor KennyLoggings that we used for performance comparison.  
   
 
-<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png" width=50% height=50%>
-<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png" width=50% height=50%>
-<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png" width=50% height=50%>
+<img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-available.png" width=15% height=15%> <img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-functiona.png" width=15% height=15%> <img src="https://github.com/TsongW/QuickLog/blob/main/images/usenixbadges-reproduced.png" width=15% height=15%>
   
-  
+
 
 # Run-time environment
 We ran our evaluation in CentOS 7 (Linux version 3.10.0-1160.49.1.el7) with Linux Audit version 2.8.5-4.el7. 
